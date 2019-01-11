@@ -153,9 +153,9 @@ end
 mod.setProps = function(key, value, v2, v3, v4)
 	if value == "" then
 		mod:warn("no value given")
-		return
 	end
 	if key == "size" or key == "near" or key == "far" or key == "offset" then
+		mod:set(key, value)
 	else
 		mod:warn(key .. " is not a supported")
 	end
