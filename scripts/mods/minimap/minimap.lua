@@ -40,10 +40,24 @@ mod.syncCam = function(dt)
 	if not mod.camera then
 		return
 	end
-	local local_player_unit = Managers.player:local_player().player_unit
-	local player_position = Unit.local_position(local_player_unit, 0)
-	ScriptCamera.set_local_position(mod.camera, player_position)
-	local oldRot = ScriptCamera.rotation(mod.camera)
+	-- sync position with player character
+	local follow = mod:get("followPlayer")
+	if follow then
+		local local_player_unit = Managers.player:local_player().player_unit
+		local player_position = Unit.local_position(local_player_unit, 0)
+		--ScriptCamera.set_local_position(mod.camera, player_position)
+
+		local camera_position_new = Vector3.zero()
+		camera_position_new.x = player_position.x
+		camera_position_new.y = player_position.y
+		camera_position_new.z = player_position.z + mod:get("offset")
+		local lookat_target = Vector3(0, camera_position_new.z, 0)
+		local direction = Vector3.normalize(player_position - camera_position_new)
+		local rotation = Quaternion.look(direction)
+
+		ScriptCamera.set_local_position(mod.camera, camera_position_new)
+		ScriptCamera.set_local_rotation(mod.camera, rotation)
+	end
 
 	Camera.set_projection_type(mod.camera, Camera.ORTHOGRAPHIC)
 	Camera.set_far_range(mod.camera, mod:get("far"))
@@ -155,7 +169,7 @@ mod.setProps = function(key, value, v2, v3, v4)
 	if value == "" then
 		mod:echo("no value given")
 	end
-	if key == "size" or key == "near" or key == "far" then
+	if key == "size" or key == "near" or key == "far" or key == "offset" then
 		mod:set(key, value)
 	else
 		mod:echo(key)

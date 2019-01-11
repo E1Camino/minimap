@@ -10,6 +10,21 @@ return {
 	options_widgets = {
 		-- Widget settings for the mod options menu
 		{
+			setting_name = "followPlayer",
+			widget_type = "checkbox",
+			text = "follow the player",
+			unit_text = "",
+			default_value = true
+		},
+		{
+			setting_name = "offset",
+			widget_type = "numeric",
+			text = "offset above player",
+			unit_text = "",
+			range = {0, 200},
+			default_value = 1
+		},
+		{
 			setting_name = "near",
 			widget_type = "numeric",
 			text = "near",
