@@ -10,6 +10,13 @@ return {
 	options_widgets = {
 		-- Widget settings for the mod options menu
 		{
+			setting_name = "open_minimap_view",
+			widget_type = "keybind",
+			text = "toggle minimap",
+			default_value = {},
+			action = "toggleMap"
+		},
+		{
 			setting_name = "followPlayer",
 			widget_type = "checkbox",
 			text = "follow the player",
@@ -29,8 +36,8 @@ return {
 			widget_type = "numeric",
 			text = "near",
 			unit_text = "",
-			range = {0, 200},
-			default_value = 1
+			range = {0, 100000},
+			default_value = 12000
 		},
 		{
 			setting_name = "far",
