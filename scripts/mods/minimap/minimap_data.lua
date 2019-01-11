@@ -33,14 +33,14 @@ return {
 		{
 			setting_name = "offsetspeedPlus",
 			widget_type = "keybind",
-			text = "speed for offset changes",
+			text = "increase speed for offset changes",
 			default_value = {},
 			action = "increaseOffsetSpeed"
 		},
 		{
-			setting_name = "offsetspeedPlus",
+			setting_name = "offsetspeedMinus",
 			widget_type = "keybind",
-			text = "speed for offset changes",
+			text = "decrease speed for offset changes",
 			default_value = {},
 			action = "decreaseOffsetSpeed"
 		},
