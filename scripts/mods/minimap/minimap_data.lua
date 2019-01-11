@@ -17,6 +17,34 @@ return {
 			action = "toggleMap"
 		},
 		{
+			setting_name = "offsetplus",
+			widget_type = "keybind",
+			text = "increase offset",
+			default_value = {},
+			action = "increaseOffset"
+		},
+		{
+			setting_name = "offsetminus",
+			widget_type = "keybind",
+			text = "decrease offset",
+			default_value = {},
+			action = "decreaseOffset"
+		},
+		{
+			setting_name = "offsetspeedPlus",
+			widget_type = "keybind",
+			text = "speed for offset changes",
+			default_value = {},
+			action = "increaseOffsetSpeed"
+		},
+		{
+			setting_name = "offsetspeedPlus",
+			widget_type = "keybind",
+			text = "speed for offset changes",
+			default_value = {},
+			action = "decreaseOffsetSpeed"
+		},
+		{
 			setting_name = "followPlayer",
 			widget_type = "checkbox",
 			text = "follow the player",

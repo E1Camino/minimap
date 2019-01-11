@@ -5,6 +5,23 @@ mod.viewport = nil
 mod.camera = nil
 mod.active = false
 
+mod.offsetSpeed = 0.1
+
+mod.increaseOffset = function()
+	local c = mod:get("offset")
+	mod:set("offset", c + mod.offsetSpeed)
+end
+mod.decreaseOffset = function()
+	local c = mod:get("offset")
+	mod:set("offset", c - mod.offsetSpeed)
+end
+mod.increaseOffsetSpeed = function()
+	mod.offsetSpeed = mod.offsetSpeed + 0.1
+end
+mod.decreaseOffsetSpeed = function()
+	mod.offsetSpeed = mod.offsetSpeed - 0.1
+end
+
 local function my_function()
 	return
 end
