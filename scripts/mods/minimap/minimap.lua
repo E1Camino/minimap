@@ -85,7 +85,6 @@ mod.createViewport = function()
 	local world = Application.main_world()
 	mod.viewport = mod._create_minimap_viewport(world, "minimap", "default", 2)
 	mod.active = true
-	--CameraManager:add_viewport(mod.viewport, "minimap")
 end
 
 mod._create_minimap_viewport = function(
