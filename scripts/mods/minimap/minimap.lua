@@ -8,6 +8,16 @@ mod.offset_speed = 0.1
 mod.currentProp = 1
 mod.propsForToggle = {"height", "near", "far", "size", "area"}
 mod.viewports = nil
+mod._get_default_settings = function()
+	return {
+		height = mod:get("height"),
+		near = mod:get("near"),
+		far = mod:get("far"),
+		area = mod:get("area")
+	}
+end
+mod._character_offset = 0
+mod._current_settings = mod:_get_default_settings()
 
 mod.camera_positions = {}
 mod.current_camera_index = nil
@@ -60,14 +70,22 @@ mod.print_debug = function(dt)
 	local oldRot = ScriptCamera.rotation(mod.camera)
 	mod:echo(
 		(mod.propsForToggle[mod.currentProp] == "near" and "*" or "") ..
-			"near " .. mod:get("near") .. " " .. Camera.near_range(mod.camera)
+			"near " .. mod:get("near") .. " " .. mod._current_settings.near
 	)
 
 	mod:echo((mod.propsForToggle[mod.currentProp] == "far" and "*" or "") .. "far " .. Camera.far_range(mod.camera))
-	mod:echo((mod.propsForToggle[mod.currentProp] == "size" and "*" or "") .. "size " .. mod:get("size") / 100)
-	mod:echo((mod.propsForToggle[mod.currentProp] == "area" and "*" or "") .. "area " .. mod:get("area"))
-	mod:echo("cameras " .. table.getn(mod.camera_positions))
-	mod:dump(mod.camera_positions, "positions", 2)
+	mod:echo((mod.propsForToggle[mod.currentProp] == "height" and "*" or "") .. "height " .. mod:get("height"))
+	mod:echo(
+		(mod.propsForToggle[mod.currentProp] == "area" and "*" or "") ..
+			"area " .. mod:get("area") .. " " .. mod._current_settings.area
+	)
+end
+
+mod._get_viewport_cam = function(viewport_name)
+	local world = Application.main_world()
+	local o_viewport = ScriptWorld.viewport(world, viewport_name)
+
+	return ScriptViewport.camera(o_viewport)
 end
 
 mod.syncCam = function(dt)
@@ -75,20 +93,31 @@ mod.syncCam = function(dt)
 		return
 	end
 
-	-- sync position with player character
-	-- taking the camera position is easier but could get messy without "no wobble mod"
+	local local_player_unit = Managers.player:local_player().player_unit
+	local player_position = Unit.local_position(local_player_unit, 0)
+
+	--ScriptCamera.set_local_position(mod.camera, player_position)
+
+	local camera_position_new = Vector3.zero()
+	camera_position_new.x = player_position.x
+	camera_position_new.y = player_position.y -- sync position with player character
+
 	local viewport_name = "player_1"
-	local world = Application.main_world()
-	local o_viewport = ScriptWorld.viewport(world, viewport_name)
-	local original_camera = ScriptViewport.camera(o_viewport)
+	local original_camera = mod._get_viewport_cam(viewport_name)
+	if not original_camera then
+		return
+	end
 	local origingal_camera_position = ScriptCamera.position(original_camera)
 	ScriptCamera.set_local_position(mod.camera, origingal_camera_position)
 
-	local cameraHeight = mod:get("height")
+	local cameraHeight = mod._current_settings.height
+	local far = mod._current_settings.far
+	local near = mod._current_settings.near
 
-	local camera_position_new = Vector3.zero()
-	camera_position_new.x = origingal_camera_position.x
-	camera_position_new.y = origingal_camera_position.y
+	if mod._character_offset == 0 then
+		mod._character_offset = origingal_camera_position.z - player_position.z
+	end
+
 	camera_position_new.z = cameraHeight
 	local direction = Vector3.normalize(Vector3(0, 0, -1))
 	local rotation = Quaternion.look(direction)
@@ -101,13 +130,15 @@ mod.syncCam = function(dt)
 	Camera.set_projection_type(mod.camera, Camera.ORTHOGRAPHIC)
 	Camera.set_projection_type(mod.shadow_cull_camera, Camera.ORTHOGRAPHIC)
 
-	Camera.set_far_range(mod.camera, mod:get("far"))
-	Camera.set_near_range(mod.camera, cameraHeight - origingal_camera_position.z - mod:get("near"))
+	local cfar = cameraHeight - player_position.z + mod._character_offset + far
+	local cnear = cameraHeight - player_position.z + mod._character_offset - near
+	Camera.set_far_range(mod.camera, cfar)
+	Camera.set_near_range(mod.camera, cnear)
+	Camera.set_far_range(mod.shadow_cull_camera, cfar)
+	Camera.set_near_range(mod.shadow_cull_camera, cnear)
 
-	Camera.set_far_range(mod.shadow_cull_camera, mod:get("far"))
-	Camera.set_near_range(mod.shadow_cull_camera, cameraHeight - origingal_camera_position.z - mod:get("near"))
-	local min = mod:get("area") * -1
-	local max = mod:get("area")
+	local min = mod._current_settings.area * -1
+	local max = mod._current_settings.area
 	Camera.set_orthographic_view(mod.camera, min, max, min, max)
 	Camera.set_orthographic_view(mod.shadow_cull_camera, min, max, min, max)
 
@@ -126,11 +157,62 @@ mod.syncCam = function(dt)
 	Viewport.set_rect(mod.viewport, unpack(Viewport.get_data(mod.viewport, "rect")))
 end
 
+mod.check_polygons = function(dt)
+	if not mod.camera or mod._level_settings then
+		return
+	end
+	local settings = mod:_get_default_settings()
+	local overwrite_settings = nil
+	local cam_pos = ScriptCamera.position(mod.camera)
+
+	local setting_keys = {"near", "far", "area", "height"}
+	for pi, polygon in ipairs(mod._level_settings) do
+		-- check if camera is inside poly
+		mod._pre_calc(polygon)
+		local inside = mod:is_point_in_polygon(cam_pos, polygon.points)
+
+		if inside then
+			for si, setting_key in ipairs(setting_keys) do
+				local new_setting = polygon[setting_key]
+				if new_setting then
+					settings[setting_key] = new_setting
+				end
+			end
+		end
+	end
+	mod._current_settings = settings
+end
+
+mod.is_point_in_polygon = function(point, vertices)
+	local inside = false
+	return inside
+end
+mod._pre_calc = function(polygon_name)
+	local s = mod._level_settings[polygon_name]
+end
+
+mod._get_level_settings = function(self)
+	local level_transition_handler = Managers.state.game_mode.level_transition_handler
+	local level_key = level_transition_handler:get_current_level_keys()
+	return dofile("scripts/mods/minimap/minimap_level_data")[level_key]
+end
+
 mod.createViewport = function()
 	local world = Application.main_world()
 	mod.viewport = mod._create_minimap_viewport(world, "minimap", "default", 2)
 	ScriptWorld.activate_viewport(world, mod.viewport)
 	mod.active = true
+	mod._level_settings = mod:_get_level_settings()
+	mod:dump(mod._level_settings, "settings", 2)
+end
+
+mod.destroyViewport = function()
+	local world = Application.main_world()
+	ScriptWorld.destroy_viewport(world, "minimap")
+	mod.viewport = nil
+	mod.camera = nil
+	mod.active = false
+	mod._character_offset = 0
 end
 
 mod._create_minimap_viewport = function(
@@ -167,7 +249,7 @@ mod._create_minimap_viewport = function(
 			0.5
 		}
 	)
-	Viewport.set_data(viewport, "avoid_shading_callback", true)
+	Viewport.set_data(viewport, "avoid_shading_callback", false)
 	Viewport.set_data(viewport, "no_scaling", true)
 	Viewport.set_rect(viewport, unpack(Viewport.get_data(viewport, "rect")))
 
@@ -195,14 +277,6 @@ mod._create_minimap_viewport = function(
 	return viewport
 end
 
-mod.destroyViewport = function()
-	local world = Application.main_world()
-	ScriptWorld.destroy_viewport(world, "minimap")
-	mod.viewport = nil
-	mod.camera = nil
-	mod.active = false
-end
-
 mod.toggleMap = function()
 	if mod.active then
 		mod:destroyViewport()
@@ -211,47 +285,15 @@ mod.toggleMap = function()
 	end
 end
 
-mod.saveCamera = function(name)
-	local l = table.getn(mod.camera_positions)
-	local local_player_unit = Managers.player:local_player().player_unit
-	local player_position = Unit.local_position(local_player_unit, 0)
-	local camera = {
-		pos = Vector3Box(player_position),
-		near = mod:get("near"),
-		far = mod:get("far"),
-		size = mod:get("size"),
-		area = mod:get("area"),
-		height = mod:get("height"),
-		name = name
-	}
-	mod.camera_positions[l] = camera
-end
+-- got this from DarknessSystem.is_in_darkness_volume
+mod.is_in_volume = function(self, position, volume)
+	local is_inside = false
 
-mod.restoreCamera = function(camera)
-	local local_player_unit = Managers.player:local_player().player_unit
-	mod:dump(camera, "camera to rstore", 2)
-	local position_new = Vector3.zero()
-	position_new.x = camera.pos.x
-	position_new.y = camera.pos.y
-	position_new.z = camera.pos.z
-	Unit.teleport_local_position(local_player_unit, 0, position_new)
-	mod:set("near", camera.near)
-	mod:set("far", camera.far)
-	mod:set("size", camera.size)
-	mod:set("area", camera.area)
-	mod:set("height", camera.height)
-end
-
-mod.switchThroughCameras = function(i)
-	local l = table.getn(mod.camera_positions)
-	local cameraIndex = i or mod.current_camera_index or 0
-	--[[ 	if not cameraIndex then
-		mod:echo("no camera to jump to, please create one with m_addC")
-		return
+	if not bottom and not top then
+		Level.is_point_inside_volume(level, "room_volume", volume)
 	end
- ]] local camera =
-		mod.camera_positions[cameraIndex]
-	mod:restoreCamera(camera)
+
+	return false
 end
 
 mod.setProps = function(key, value, v2, v3, v4)
@@ -268,11 +310,9 @@ mod.setProps = function(key, value, v2, v3, v4)
 		ScriptWorld._update_render_queue(mod.world)
 		return
 	end
-	if
-		key == "area" or key == "size" or key == "csize" or key == "near" or key == "far" or key == "offset" or
-			key == "height"
-	 then
+	if key == "area" or key == "size" or key == "near" or key == "far" or key == "height" then
 		mod:set(key, value)
+		mod._current_settings[key] = value
 	elseif key == "pos" then
 		mod:set("followPlayer", false)
 		mod:saveCamera(value)
@@ -283,11 +323,114 @@ end
 
 mod:command("m_debug", "Shows debug stuff for Minimap mod", mod.print_debug)
 mod:command("m_set", "Sets specific values for Minimap", mod.setProps)
-mod:command("m_create", "Saves current camera settings Minimap", mod.saveCamera)
-mod:command("m_load", "Loads camera with given index Minimap", mod.switchThroughCameras)
 
+-- hook I stole from Streaming Info
+mod:hook_safe(
+	IngameUI,
+	"update",
+	function(self, dt, t, disable_ingame_ui, end_of_level_ui) -- luacheck: no unused
+		mod.ingameUI = self
+		--[[ 		local level_transition_handler = Managers.state.game_mode.level_transition_handler
+		local level_key = level_transition_handler:get_current_level_keys()
+		local is_in_inn = level_key == "inn_level"
+
+		local in_score_screen = end_of_level_ui ~= nil
+		local end_screen_active = self:end_screen_active()
+
+		local game_mode_manager = Managers.state.game_mode
+		local round_started = game_mode_manager:is_round_started()
+
+		if not (is_in_inn or in_score_screen or end_screen_active) then
+			if round_started then
+				return
+			end
+		end
+
+		mod.draw_info(self) ]]
+	end
+)
+mod:hook_safe(
+	IngameUI,
+	"init",
+	function(...) -- luacheck: no unused
+		mod:echo("init ingame ui")
+	end
+)
+mod:hook_safe(
+	IngameUI,
+	"setup_views",
+	function(...) -- luacheck: no unused
+		mod:echo("setup views")
+	end
+)
+mod:hook_safe(
+	OverchargeBarUI,
+	"init",
+	function(...) -- luacheck: no unused
+		mod:echo("init overcharge bar")
+	end
+)
+mod:hook_safe(
+	CameraSystem,
+	"update",
+	function(self, context)
+		local dt = context.dt
+		local t = context.t
+		local camera_manager = Managers.state.camera
+
+		for player, camera_unit in pairs(self.camera_units) do
+			local viewport_name = player.viewport_name
+		end
+	end
+)
+
+mod:hook(
+	IngameUI,
+	"_update_hud_visibility",
+	function(func, self, disable_ingame_ui, in_score_screen)
+		--[[ 		local player = Managers.player:local_player(1)
+		local vp_name = player and player.viewport_name
+		if mod.camera then
+			mod:echo(vp_name)
+		end
+ ]]
+		local current_view = self.current_view
+		local cutscene_system = self.cutscene_system
+		local mission_vote_in_progress = self.mission_voting_ui:is_active()
+		local is_enter_game = self.countdown_ui:is_enter_game()
+		local end_screen_active = self:end_screen_active()
+		local menu_active = self.menu_active
+		local draw_hud = nil
+
+		if
+			not disable_ingame_ui and not menu_active and not current_view and not is_enter_game and not mission_vote_in_progress and
+				not in_score_screen and
+				not end_screen_active and
+				not self:unavailable_hero_popup_active()
+		 then
+			draw_hud = true
+		else
+			draw_hud = false
+		end
+
+		-- additional condition for map
+		if mod.camera then
+			draw_hud = false
+		end
+		-- end of additional condition
+
+		local hud_visible = self.hud_visible
+
+		if draw_hud ~= hud_visible then
+			self.hud_visible = draw_hud
+
+			self.ingame_hud:set_visible(draw_hud)
+		end
+	end
+)
 mod.update = function(dt)
 	mod:syncCam(dt)
+	mod:check_polygons(dt)
 end
 
 mod.on_unload = function(exit_game)
