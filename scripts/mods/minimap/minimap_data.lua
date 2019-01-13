@@ -17,47 +17,46 @@ return {
 			action = "toggleMap"
 		},
 		{
+			setting_name = "toggleProps",
+			widget_type = "keybind",
+			text = "toggle which prop should be manipulated with keybindings",
+			default_value = {},
+			action = "toggleProp"
+		},
+		{
+			setting_name = "debug",
+			widget_type = "keybind",
+			text = "print some debug stuff into the chat",
+			default_value = {},
+			action = "print_debug"
+		},
+		{
 			setting_name = "offsetplus",
 			widget_type = "keybind",
 			text = "increase offset",
 			default_value = {},
-			action = "increaseOffset"
+			action = "increaseProp"
 		},
 		{
 			setting_name = "offsetminus",
 			widget_type = "keybind",
 			text = "decrease offset",
 			default_value = {},
-			action = "decreaseOffset"
+			action = "decreaseProp"
 		},
 		{
 			setting_name = "offsetspeedPlus",
 			widget_type = "keybind",
 			text = "increase speed for offset changes",
 			default_value = {},
-			action = "increaseOffsetSpeed"
+			action = "increasePropSpeed"
 		},
 		{
 			setting_name = "offsetspeedMinus",
 			widget_type = "keybind",
 			text = "decrease speed for offset changes",
 			default_value = {},
-			action = "decreaseOffsetSpeed"
-		},
-		{
-			setting_name = "followPlayer",
-			widget_type = "checkbox",
-			text = "follow the player",
-			unit_text = "",
-			default_value = true
-		},
-		{
-			setting_name = "offset",
-			widget_type = "numeric",
-			text = "offset above player",
-			unit_text = "",
-			range = {0, 200},
-			default_value = 1
+			action = "decreasePropSpeed"
 		},
 		{
 			setting_name = "near",
@@ -76,12 +75,28 @@ return {
 			default_value = 1000
 		},
 		{
-			setting_name = "size",
+			setting_name = "area",
 			widget_type = "numeric",
-			text = "min x rect",
+			text = "half the size of the area that should be rendered in the map",
 			unit_text = "",
 			range = {1, 100},
 			default_value = 10
+		},
+		{
+			setting_name = "size",
+			widget_type = "numeric",
+			text = "size of the map widget",
+			unit_text = "%",
+			range = {1, 100},
+			default_value = 0.4
+		},
+		{
+			setting_name = "height",
+			widget_type = "numeric",
+			text = "camera height",
+			unit_text = "",
+			range = {40, 200},
+			default_value = 90
 		}
 	}
 }
