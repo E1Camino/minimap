@@ -9,3 +9,6 @@ package = [
 lua = [
 	"scripts/mods/minimap/*"
 ]
+material = [
+    "materials/minimap/*"
+]
