@@ -18,6 +18,7 @@ mod._get_default_settings = function(self)
 end
 mod._character_offset = 0
 mod._current_settings = mod:_get_default_settings()
+mod._current_poly_insight = nil
 
 mod.camera_positions = {}
 mod.current_camera_index = nil
@@ -43,15 +44,8 @@ mod.toggleProp = function()
 end
 
 mod.print_live = function()
-	if not mod:get("debug_mode") then
-		return
-	end
-	local viewport_name = "player_1"
-	local world = Application.main_world()
-	local o_viewport = ScriptWorld.viewport(world, viewport_name)
-	local original_camera = ScriptViewport.camera(o_viewport)
-	local origingal_camera_position = ScriptCamera.position(original_camera)
-	mod:echo(origingal_camera_position)
+	mod.destroy_debug_lines()
+	mod.create_debug_lines()
 end
 
 mod.print_debug = function(dt)
@@ -64,8 +58,8 @@ mod.print_debug = function(dt)
 	local world = Application.main_world()
 	local o_viewport = ScriptWorld.viewport(world, viewport_name)
 	local original_camera = ScriptViewport.camera(o_viewport)
-	local origingal_camera_position = ScriptCamera.position(original_camera)
-	mod:echo(origingal_camera_position)
+	local original_camera_position = ScriptCamera.position(original_camera)
+	mod:echo(original_camera_position)
 
 	local oldRot = ScriptCamera.rotation(mod.camera)
 	mod:echo(
@@ -84,6 +78,87 @@ mod.print_debug = function(dt)
 	)
 end
 
+mod.create_debug_lines = function()
+	local world = Application.main_world()
+	if not world or not Managers.player then
+		return
+	end
+	mod._debug_lines = World.create_line_object(world, true)
+
+	-- player sphere
+	local local_player_unit = Managers.player:local_player().player_unit
+	local player_position = Unit.local_position(local_player_unit, 0)
+	local z = player_position.z
+	player_position.z = player_position.z + 2
+	LineObject.add_sphere(mod._debug_lines, Color(255, 255, 255, 255), player_position, 0.05)
+
+	-- player axes
+	local player_pose = Unit.local_pose(local_player_unit, 0)
+	LineObject.add_axes(mod._debug_lines, player_pose, 1)
+
+	-- paint level setting polygons
+	mod._create_debug_points()
+	LineObject.dispatch(world, mod._debug_lines)
+end
+mod._create_debug_points = function(z)
+	if not mod._level_settings then
+		return
+	end
+
+	-- polygon iteration
+	for poly_name in pairs(mod._level_settings) do
+		local polygon = mod._level_settings[poly_name]
+		local c = Color(255, 255, 255, 255)
+		if poly_name == "near" or poly_name == "far" or poly_name == "area" or poly_name == "height" then
+		else
+			if poly_name.color then
+				c = poly_name.color
+			end
+			-- highlight polygon that we are in^
+			-- check if camera is inside poly
+			local s = mod._level_settings[poly_name]
+			if s.points then
+				local pre = mod._pre_calc(poly_name)
+				local prev = polygon.points[#polygon.points]
+
+				--point iteration
+				for si, point in pairs(polygon.points) do
+					--					mod:echo(si)
+					local c_p = Vector3.zero()
+					c_p.x = point[1]
+					c_p.y = point[2]
+					c_p.z = z or point[3]
+					local p_p = Vector3.zero()
+					p_p.x = prev[1]
+					p_p.y = prev[2]
+					p_p.z = z or prev[3]
+					prev = point
+					if poly_name == mod._current_poly_insight then
+						LineObject.add_line(mod._debug_lines, Color(255, 255, 0, 0), p_p, c_p)
+						LineObject.add_sphere(mod._debug_lines, Color(255, 255, 0, 0), c_p, 0.05)
+					elseif si == 1 then
+						LineObject.add_line(mod._debug_lines, Color(255, 255, 255, 0), p_p, c_p)
+						LineObject.add_sphere(mod._debug_lines, Color(255, 255, 255, 0), c_p, 0.05)
+					else
+						LineObject.add_line(mod._debug_lines, c, p_p, c_p)
+						LineObject.add_sphere(mod._debug_lines, c, c_p, 0.05)
+					end
+				end
+			end
+		end
+	end
+end
+
+mod.destroy_debug_lines = function()
+	local world = Application.main_world()
+	if not mod._debug_lines or not world then
+		return
+	end
+	LineObject.reset(mod._debug_lines)
+	LineObject.dispatch(world, mod._debug_lines)
+	mod._debug_lines = nil
+end
+
 mod._get_viewport_cam = function(viewport_name)
 	local world = Application.main_world()
 	local o_viewport = ScriptWorld.viewport(world, viewport_name)
@@ -92,10 +167,6 @@ mod._get_viewport_cam = function(viewport_name)
 end
 
 mod.syncCam = function(dt)
-	if not mod.camera then
-		return
-	end
-
 	local local_player_unit = Managers.player:local_player().player_unit
 	local player_position = Unit.local_position(local_player_unit, 0)
 
@@ -110,15 +181,15 @@ mod.syncCam = function(dt)
 	if not original_camera then
 		return
 	end
-	local origingal_camera_position = ScriptCamera.position(original_camera)
-	ScriptCamera.set_local_position(mod.camera, origingal_camera_position)
+	local original_camera_position = ScriptCamera.position(original_camera)
+	ScriptCamera.set_local_position(mod.camera, original_camera_position)
 
 	local cameraHeight = mod._current_settings.height
 	local far = mod._current_settings.far
 	local near = mod._current_settings.near
 
 	if mod._character_offset == 0 then
-		mod._character_offset = origingal_camera_position.z - player_position.z
+		mod._character_offset = original_camera_position.z - player_position.z
 	end
 
 	camera_position_new.z = cameraHeight
@@ -161,15 +232,17 @@ mod.syncCam = function(dt)
 end
 
 mod.check_polygons = function(dt)
-	if not mod.camera or not mod._level_settings then
+	if not mod._level_settings then
 		return
 	end
 
 	local settings = mod:_get_default_settings()
 	local overwrite_settings = table.clone(settings)
-	local cam_pos = ScriptCamera.position(mod.camera)
+	local local_player_unit = Managers.player:local_player().player_unit
+	local player_position = Unit.local_position(local_player_unit, 0)
 
 	local setting_keys = {"near", "far", "area", "height"}
+	local new_insight = ""
 
 	for poly_name in pairs(mod._level_settings) do
 		local polygon = mod._level_settings[poly_name]
@@ -182,9 +255,9 @@ mod.check_polygons = function(dt)
 		else
 			-- check if camera is inside poly
 			local pre = mod._pre_calc(poly_name)
-			local inside = mod:is_point_in_polygon(cam_pos, polygon.points, pre)
-
+			local inside = mod:is_point_in_polygon(player_position, polygon.points, pre)
 			if inside then
+				new_insight = poly_name
 				for si, setting_key in pairs(setting_keys) do
 					local new_setting = mod._level_settings[poly_name][setting_key]
 					--					mod:echo("n " .. setting_key .. " " .. new_setting)
@@ -195,6 +268,7 @@ mod.check_polygons = function(dt)
 			end
 		end
 	end
+	mod._current_poly_insight = new_insight
 	mod._current_settings = overwrite_settings
 end
 
@@ -202,6 +276,7 @@ mod.is_point_in_polygon = function(self, point, vertices, pre)
 	if not pre.corners then
 		return false
 	end
+	mod:dump(vertices, "vertices", 2)
 	-- http://alienryderflex.com/polygon/
 	local previous = pre.corners
 	local polyX = pre.polyX
@@ -291,8 +366,6 @@ mod.createViewport = function()
 	mod.viewport = mod._create_minimap_viewport(world, "minimap", "default", 2)
 	ScriptWorld.activate_viewport(world, mod.viewport)
 	mod.active = true
-	local s = mod:_get_level_settings()
-	mod._level_settings = s
 end
 
 mod.destroyViewport = function()
@@ -518,8 +591,20 @@ mod:hook(
 	end
 )
 mod.update = function(dt)
+	if not mod.camera then
+		return
+	end
+
+	if not mod._level_settings then
+		local s = mod:_get_level_settings()
+		mod._level_settings = s
+	end
+
 	mod:syncCam(dt)
 	mod:check_polygons(dt)
+	if mod:get("debug_mode") then
+		mod.print_live()
+	end
 end
 
 mod.on_unload = function(exit_game)

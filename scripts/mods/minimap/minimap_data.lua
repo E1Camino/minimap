@@ -17,6 +17,12 @@ return {
 			action = "toggleMap"
 		},
 		{
+			setting_name = "debug_mode",
+			widget_type = "checkbox",
+			text = "debug mode",
+			default_value = false
+		},
+		{
 			setting_name = "toggleProps",
 			widget_type = "keybind",
 			text = "toggle which prop should be manipulated with keybindings",

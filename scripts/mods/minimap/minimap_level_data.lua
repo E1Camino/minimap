@@ -1,3 +1,7 @@
+local randomGreenBlueishColor = function()
+    return Color(255, math.random(1, 40), math.random(1, 255), math.random(1, 255))
+end
+
 local level_data = {
     inn_level = {
         --[[ farm = {
@@ -27,28 +31,29 @@ local level_data = {
         farm = {
             points = {
                 {
-                    -18.6359,
-                    41.043,
+                    -14.1387,
+                    28.1612,
                     12
                 },
                 {
-                    -14.5406,
-                    27.6653,
+                    -18.8,
+                    41.6764,
                     12
                 },
                 {
-                    -9.08867,
-                    30.3127,
+                    -11.9466,
+                    44.2933,
                     12
                 },
                 {
-                    -11.8424,
-                    44.2502,
+                    -6.77303,
+                    31.1788,
                     12
                 }
             },
-            near = 5,
-            area = 8
+            near = 4,
+            area = 8,
+            color = randomGreenBlueishColor
         },
         ammo = {
             points = {
@@ -73,7 +78,8 @@ local level_data = {
                     13.64
                 }
             },
-            near = 5
+            near = 8,
+            color = randomGreenBlueishColor
         },
         near = 15,
         far = 20,
