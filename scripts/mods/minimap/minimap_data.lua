@@ -28,7 +28,7 @@ return {
 			widget_type = "keybind",
 			text = "print some debug stuff into the chat",
 			default_value = {},
-			action = "print_debug"
+			action = "check_polygons"
 		},
 		{
 			setting_name = "offsetplus",

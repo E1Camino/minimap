@@ -8,7 +8,7 @@ mod.offset_speed = 0.1
 mod.currentProp = 1
 mod.propsForToggle = {"height", "near", "far", "size", "area"}
 mod.viewports = nil
-mod._get_default_settings = function()
+mod._get_default_settings = function(self)
 	return {
 		height = mod:get("height"),
 		near = mod:get("near"),
@@ -73,7 +73,10 @@ mod.print_debug = function(dt)
 			"near " .. mod:get("near") .. " " .. mod._current_settings.near
 	)
 
-	mod:echo((mod.propsForToggle[mod.currentProp] == "far" and "*" or "") .. "far " .. Camera.far_range(mod.camera))
+	mod:echo(
+		(mod.propsForToggle[mod.currentProp] == "far" and "*" or "") ..
+			"far " .. mod:get("height") .. " " .. Camera.far_range(mod.camera)
+	)
 	mod:echo((mod.propsForToggle[mod.currentProp] == "height" and "*" or "") .. "height " .. mod:get("height"))
 	mod:echo(
 		(mod.propsForToggle[mod.currentProp] == "area" and "*" or "") ..
@@ -158,37 +161,123 @@ mod.syncCam = function(dt)
 end
 
 mod.check_polygons = function(dt)
-	if not mod.camera or mod._level_settings then
+	if not mod.camera or not mod._level_settings then
 		return
 	end
+
 	local settings = mod:_get_default_settings()
-	local overwrite_settings = nil
+	local overwrite_settings = table.clone(settings)
 	local cam_pos = ScriptCamera.position(mod.camera)
 
 	local setting_keys = {"near", "far", "area", "height"}
-	for pi, polygon in ipairs(mod._level_settings) do
-		-- check if camera is inside poly
-		mod._pre_calc(polygon)
-		local inside = mod:is_point_in_polygon(cam_pos, polygon.points)
 
-		if inside then
-			for si, setting_key in ipairs(setting_keys) do
-				local new_setting = polygon[setting_key]
-				if new_setting then
-					settings[setting_key] = new_setting
+	for poly_name in pairs(mod._level_settings) do
+		local polygon = mod._level_settings[poly_name]
+		if poly_name == "near" or poly_name == "far" or poly_name == "area" or poly_name == "height" then
+			-- level default settings (instead of general default settings)
+			local new_setting = mod._level_settings[poly_name]
+			if new_setting then
+				overwrite_settings[poly_name] = new_setting
+			end
+		else
+			-- check if camera is inside poly
+			local pre = mod._pre_calc(poly_name)
+			local inside = mod:is_point_in_polygon(cam_pos, polygon.points, pre)
+
+			if inside then
+				for si, setting_key in pairs(setting_keys) do
+					local new_setting = mod._level_settings[poly_name][setting_key]
+					--					mod:echo("n " .. setting_key .. " " .. new_setting)
+					if new_setting then
+						overwrite_settings[setting_key] = new_setting
+					end
 				end
 			end
 		end
 	end
-	mod._current_settings = settings
+	mod._current_settings = overwrite_settings
 end
 
-mod.is_point_in_polygon = function(point, vertices)
-	local inside = false
-	return inside
+mod.is_point_in_polygon = function(self, point, vertices, pre)
+	if not pre.corners then
+		return false
+	end
+	-- http://alienryderflex.com/polygon/
+	local previous = pre.corners
+	local polyX = pre.polyX
+	local polyY = pre.polyY
+	local x = point.x
+	local y = point.y
+	local oddNodes = false
+
+	for current = 1, pre.corners do
+		local betweenY = (polyY[current] < y and polyY[previous] >= y) or (polyY[previous] < y and polyY[current] >= y)
+
+		if (betweenY) then
+			local calc =
+				polyX[current] + (y - polyY[current]) / (polyY[previous] - polyY[current]) * (polyX[previous] - polyX[current])
+			if calc < x then
+				if not oddNodes then
+					oddNodes = true
+				else
+					oddNodes = false
+				end
+			end
+		end
+		j = i
+	end
+	return oddNodes
 end
+
 mod._pre_calc = function(polygon_name)
+	-- http://alienryderflex.com/polygon/
 	local s = mod._level_settings[polygon_name]
+
+	-- only precalc once
+	if s._pre then
+		return s._pre
+	end
+	-- we need points to pre calc
+	if not s.points or s._pre then
+		return
+	end
+
+	local corners = #s.points
+	local polyX = {}
+	local polyY = {}
+	local polyZ = {}
+
+	for i, c in pairs(s.points) do
+		polyX[i] = c[1]
+		polyY[i] = c[2]
+		polyZ[i] = c[3]
+	end
+	local constant = {}
+	local multiple = {}
+
+	local j = corners
+	for i = 1, corners do
+		if (polyY[j] == polyY[i]) then
+			constant[i] = polyX[i]
+			multiple[i] = 0
+		else
+			constant[i] =
+				polyX[i] - (polyY[i] * polyX[j]) / (polyY[j] - polyY[i]) + (polyY[i] * polyX[i]) / (polyY[j] - polyY[i])
+			multiple[i] = (polyX[j] - polyX[i]) / (polyY[j] - polyY[i])
+			j = i
+		end
+	end
+	local pre = {
+		corners = corners,
+		polyX = polyX,
+		polyY = polyY,
+		multiple = multiple,
+		constant = constant,
+		polyX = polyX,
+		polyY = polyY
+	}
+	mod._level_settings[polygon_name]._pre = pre
+	return pre
 end
 
 mod._get_level_settings = function(self)
@@ -202,8 +291,8 @@ mod.createViewport = function()
 	mod.viewport = mod._create_minimap_viewport(world, "minimap", "default", 2)
 	ScriptWorld.activate_viewport(world, mod.viewport)
 	mod.active = true
-	mod._level_settings = mod:_get_level_settings()
-	mod:dump(mod._level_settings, "settings", 2)
+	local s = mod:_get_level_settings()
+	mod._level_settings = s
 end
 
 mod.destroyViewport = function()
