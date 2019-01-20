@@ -81,8 +81,8 @@ local level_data = {
             near = 8,
             color = randomGreenBlueishColor
         },
-        near = 15,
-        far = 20,
+        near = 200,
+        far = 10000,
         height = 2000,
         area = 12
     }

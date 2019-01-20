@@ -6,7 +6,7 @@ mod.camera = nil
 mod.active = false
 mod.offset_speed = 0.1
 mod.currentProp = 1
-mod.propsForToggle = {"height", "near", "far", "size", "area"}
+mod.propsForToggle = {"near", "far", "area", "near"}
 mod.viewports = nil
 mod._get_default_settings = function(self)
 	return {
@@ -18,20 +18,21 @@ mod._get_default_settings = function(self)
 end
 mod._character_offset = 0
 mod._current_settings = mod:_get_default_settings()
+mod._set_props = {}
 mod._current_poly_insight = nil
 
 mod.camera_positions = {}
 mod.current_camera_index = nil
 
 mod.increaseProp = function()
-	local p = mod.propsForToggle[mod.currentProp]
-	local c = mod:get(p)
-	mod:set(p, c + mod.offset_speed)
+	local prop_key = mod.propsForToggle[mod.currentProp]
+	local old_value = mod._current_settings[prop_key]
+	mod._set_props[prop_key] = old_value + mod.offset_speed
 end
 mod.decreaseProp = function()
-	local p = mod.propsForToggle[mod.currentProp]
-	local c = mod:get(p)
-	mod:set(p, c - mod.offset_speed)
+	local prop_key = mod.propsForToggle[mod.currentProp]
+	local old_value = mod._current_settings[prop_key]
+	mod._set_props[prop_key] = old_value / mod.offset_speed
 end
 mod.increasePropSpeed = function()
 	mod.offset_speed = mod.offset_speed + 0.1
@@ -39,8 +40,18 @@ end
 mod.decreasePropSpeed = function()
 	mod.offset_speed = mod.offset_speed - 0.1
 end
-mod.toggleProp = function()
-	mod.currentProp = mod.currentProp + 1 % table.getn(mod.propsForToggle)
+mod.toggleProp = function(propKey)
+	if not propKey then
+		mod.currentProp = mod.currentProp + 1 % table.getn(mod.propsForToggle)
+	else
+		local index = {}
+		for k, v in pairs(mod.propsForToggle) do
+			index[v] = k
+		end
+		mod.currentProp = index[propKey]
+		return
+	end
+	mod.currentProp = 1
 end
 
 mod.print_live = function()
@@ -69,13 +80,14 @@ mod.print_debug = function(dt)
 
 	mod:echo(
 		(mod.propsForToggle[mod.currentProp] == "far" and "*" or "") ..
-			"far " .. mod:get("height") .. " " .. Camera.far_range(mod.camera)
+			"far " .. mod:get("far") .. " " .. mod._current_settings.far
 	)
 	mod:echo((mod.propsForToggle[mod.currentProp] == "height" and "*" or "") .. "height " .. mod:get("height"))
 	mod:echo(
 		(mod.propsForToggle[mod.currentProp] == "area" and "*" or "") ..
 			"area " .. mod:get("area") .. " " .. mod._current_settings.area
 	)
+	mod:dump(mod._set_props, "props", 2)
 end
 
 mod.create_debug_lines = function()
@@ -189,7 +201,7 @@ mod.syncCam = function(dt)
 	local near = mod._current_settings.near
 
 	if mod._character_offset == 0 then
-		mod._character_offset = original_camera_position.z - player_position.z
+		mod._character_offset = original_camera_position.z
 	end
 
 	camera_position_new.z = cameraHeight
@@ -204,8 +216,8 @@ mod.syncCam = function(dt)
 	Camera.set_projection_type(mod.camera, Camera.ORTHOGRAPHIC)
 	Camera.set_projection_type(mod.shadow_cull_camera, Camera.ORTHOGRAPHIC)
 
-	local cfar = cameraHeight - player_position.z + mod._character_offset + far
-	local cnear = cameraHeight - player_position.z + mod._character_offset - near
+	local cfar = cameraHeight + mod._character_offset + far
+	local cnear = cameraHeight + mod._character_offset - near
 	Camera.set_far_range(mod.camera, cfar)
 	Camera.set_near_range(mod.camera, cnear)
 	Camera.set_far_range(mod.shadow_cull_camera, cfar)
@@ -259,8 +271,8 @@ mod.check_polygons = function(dt)
 			if inside then
 				new_insight = poly_name
 				for si, setting_key in pairs(setting_keys) do
+					-- load setting from polygon
 					local new_setting = mod._level_settings[poly_name][setting_key]
-					--					mod:echo("n " .. setting_key .. " " .. new_setting)
 					if new_setting then
 						overwrite_settings[setting_key] = new_setting
 					end
@@ -268,15 +280,53 @@ mod.check_polygons = function(dt)
 			end
 		end
 	end
+	-- favor custom set stuff
+	for si, setting_key in pairs(setting_keys) do
+		local set_prop = mod._set_props[setting_key]
+		if set_prop then
+			overwrite_settings[setting_key] = set_prop
+		end
+	end
 	mod._current_poly_insight = new_insight
 	mod._current_settings = overwrite_settings
 end
 
+mod.is_point_in_polygon_ = function(self, point, vertices, pre)
+	--[[ 	if not pre.corners then
+		return false
+	end
+	mod:dump(vertices, "vertices", 2)
+	-- http://alienryderflex.com/polygon/
+	local previous = pre.corners
+	local vertx = pre.polyX
+	local verty = pre.polyY
+	local testx = point.x
+	local testy = point.y
+	local oddNodes = false
+
+	-- i0 j1
+	for current = 1, pre.corners do
+		local betweenY = ( ((verty[previous]>testy) != (verty[current]>testy)) &&
+		(testx < (vertx[current]-vertx[previous]) * (testy-verty[previous]) / (verty[current]-verty[previous]) + vertx[previous]) )
+
+		if (betweenY) then
+
+				if not oddNodes then
+					oddNodes = true
+				else
+					oddNodes = false
+				end
+
+		end
+		j = i
+	end
+	return oddNodes ]]
+end
 mod.is_point_in_polygon = function(self, point, vertices, pre)
 	if not pre.corners then
 		return false
 	end
-	mod:dump(vertices, "vertices", 2)
+	--mod:dump(vertices, "vertices", 2)
 	-- http://alienryderflex.com/polygon/
 	local previous = pre.corners
 	local polyX = pre.polyX
@@ -317,16 +367,30 @@ mod._pre_calc = function(polygon_name)
 		return
 	end
 
+	--bbox for fast forward checks
+	local minX = 10000
+	local maxX = -10000
+	local minY = 10000
+	local maxY = -10000
+
+	-- more advanced preps
 	local corners = #s.points
 	local polyX = {}
 	local polyY = {}
 	local polyZ = {}
 
-	for i, c in pairs(s.points) do
-		polyX[i] = c[1]
-		polyY[i] = c[2]
-		polyZ[i] = c[3]
+	for i, p in pairs(s.points) do
+		polyX[i] = p[1]
+		polyY[i] = p[2]
+		polyZ[i] = p[3]
+
+		-- bbox
+		maxX = math.max(maxX, p[1])
+		minX = math.min(minX, p[1])
+		maxY = math.max(maxY, p[2])
+		minY = math.min(minY, p[2])
 	end
+	mod:echo(maxX .. " " .. minX .. " " .. maxY .. " " .. minY)
 	local constant = {}
 	local multiple = {}
 
@@ -342,6 +406,7 @@ mod._pre_calc = function(polygon_name)
 			j = i
 		end
 	end
+
 	local pre = {
 		corners = corners,
 		polyX = polyX,
@@ -349,7 +414,13 @@ mod._pre_calc = function(polygon_name)
 		multiple = multiple,
 		constant = constant,
 		polyX = polyX,
-		polyY = polyY
+		polyY = polyY,
+		bbox = {
+			maxX = maxX,
+			minX = minX,
+			maxY = maxY,
+			minY = minY
+		}
 	}
 	mod._level_settings[polygon_name]._pre = pre
 	return pre
@@ -392,7 +463,6 @@ mod._create_minimap_viewport = function(
 	fassert(viewports[name] == nil, "Viewport %q already exists", name)
 
 	local viewport = Application.create_viewport(world, template)
-
 	Viewport.set_data(viewport, "layer", layer or 2)
 	Viewport.set_data(viewport, "active", true)
 	Viewport.set_data(viewport, "name", name)
@@ -458,23 +528,16 @@ mod.is_in_volume = function(self, position, volume)
 	return false
 end
 
-mod.setProps = function(key, value, v2, v3, v4)
+mod.setProps = function(key, value)
 	if value == "" then
 		mod:echo("no value given")
 	end
-	if key == "a" then
-		Viewport.set_data(mod.viewport, "active", true)
-		ScriptWorld._update_render_queue(mod.world)
-		return
-	end
-	if key == "d" then
-		Viewport.set_data(mod.viewport, "active", false)
-		ScriptWorld._update_render_queue(mod.world)
-		return
-	end
+
 	if key == "area" or key == "size" or key == "near" or key == "far" or key == "height" then
-		mod:set(key, value)
+		mod.currentProp = mod.toggleProp(key)
+		mod._set_props[key] = value
 		mod._current_settings[key] = value
+		mod:set(key, value)
 	elseif key == "pos" then
 		mod:set("followPlayer", false)
 		mod:saveCamera(value)
@@ -483,9 +546,56 @@ mod.setProps = function(key, value, v2, v3, v4)
 	end
 end
 
+mod.unsetProps = function(key)
+	if key == "area" or key == "size" or key == "near" or key == "far" or key == "height" then
+		mod._set_props[key] = nil
+	else
+		mod:echo(key .. " is not a supported")
+	end
+end
+
 mod:command("m_debug", "Shows debug stuff for Minimap mod", mod.print_debug)
 mod:command("m_set", "Sets specific values for Minimap", mod.setProps)
+mod:command("m_unset", "take default value for Minimap", mod.unsetProps)
 
+--[[ mod:hook(
+	ScriptWorld,
+	"render",
+	function(func, world)
+		func(world)
+		local shading_env = World.get_data(world, "shading_environment")
+
+		if not shading_env or not mod.viewport or not mod.camera then
+			return
+		end
+
+		local vp = mod.viewport
+
+		if vp then
+			ShadingEnvironment.blend(shading_env, World.get_data(world, "shading_settings"))
+			ShadingEnvironment.apply(shading_env)
+
+			if World.has_data(world, "shading_callback") and not Viewport.get_data(vp, "avoid_shading_callback") then
+				local callback = World.get_data(world, "shading_callback")
+
+				callback(world, shading_env, World.get_data(world, "render_queue")[1])
+			end
+
+			local camera = mod.camera
+
+			Application.render_world(world, camera, vp, shading_env)
+		else
+			local render_queue = World.get_data(world, "render_queue")
+
+			if table.is_empty(render_queue) then
+				Application.update_render_world(world)
+
+				return
+			end
+		end
+	end
+)
+ ]]
 -- hook I stole from Streaming Info
 mod:hook_safe(
 	IngameUI,
