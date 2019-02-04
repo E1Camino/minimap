@@ -64,9 +64,10 @@ mod.print_debug = function(dt)
 		mod:destroyViewport()
 		mod:createViewport()
 	end
-
 	local viewport_name = "player_1"
 	local world = Application.main_world()
+	local s = World.get_data(world, "shading_settings")
+	mod:dump(s, "shading s", 2)
 	local o_viewport = ScriptWorld.viewport(world, viewport_name)
 	local original_camera = ScriptViewport.camera(o_viewport)
 	local original_camera_position = ScriptCamera.position(original_camera)
@@ -92,7 +93,7 @@ end
 
 mod.create_debug_lines = function()
 	local world = Application.main_world()
-	if not world or not Managers.player then
+	if not world or not Managers.player or mod._debug_lines then
 		return
 	end
 	mod._debug_lines = World.create_line_object(world, true)
@@ -161,6 +162,70 @@ mod._create_debug_points = function(z)
 	end
 end
 
+mod:hook_origin(
+	ScriptWorld,
+	"render",
+	function(world)
+		local shading_env = World.get_data(world, "shading_environment")
+
+		if not shading_env then
+			return
+		end
+
+		local global_free_flight_viewport = World.get_data(world, "global_free_flight_viewport")
+
+		if global_free_flight_viewport then
+			ShadingEnvironment.blend(shading_env, World.get_data(world, "shading_settings"))
+			ShadingEnvironment.apply(shading_env)
+
+			if
+				World.has_data(world, "shading_callback") and
+					not Viewport.get_data(global_free_flight_viewport, "avoid_shading_callback")
+			 then
+				local callback = World.get_data(world, "shading_callback")
+
+				callback(world, shading_env, World.get_data(world, "render_queue")[1])
+			end
+
+			local camera = ScriptViewport.camera(global_free_flight_viewport)
+
+			Application.render_world(world, camera, global_free_flight_viewport, shading_env)
+		else
+			local render_queue = World.get_data(world, "render_queue")
+
+			if table.is_empty(render_queue) then
+				Application.update_render_world(world)
+
+				return
+			end
+
+			for _, viewport in ipairs(render_queue) do
+				if not World.get_data(world, "avoid_blend") then
+					ShadingEnvironment.blend(
+						shading_env,
+						World.get_data(world, "shading_settings"),
+						World.get_data(world, "override_shading_settings")
+					)
+				end
+
+				if World.has_data(world, "shading_callback") and not Viewport.get_data(viewport, "avoid_shading_callback") then
+					local callback = World.get_data(world, "shading_callback")
+
+					callback(world, shading_env, viewport)
+				end
+
+				if not World.get_data(world, "avoid_blend") then
+					ShadingEnvironment.apply(shading_env)
+				end
+
+				local camera = ScriptViewport.camera(viewport)
+
+				Application.render_world(world, camera, viewport, shading_env)
+			end
+		end
+	end
+)
+
 mod.destroy_debug_lines = function()
 	local world = Application.main_world()
 	if not mod._debug_lines or not world then
@@ -168,7 +233,6 @@ mod.destroy_debug_lines = function()
 	end
 	LineObject.reset(mod._debug_lines)
 	LineObject.dispatch(world, mod._debug_lines)
-	mod._debug_lines = nil
 end
 
 mod._get_viewport_cam = function(viewport_name)
@@ -558,44 +622,6 @@ mod:command("m_debug", "Shows debug stuff for Minimap mod", mod.print_debug)
 mod:command("m_set", "Sets specific values for Minimap", mod.setProps)
 mod:command("m_unset", "take default value for Minimap", mod.unsetProps)
 
---[[ mod:hook(
-	ScriptWorld,
-	"render",
-	function(func, world)
-		func(world)
-		local shading_env = World.get_data(world, "shading_environment")
-
-		if not shading_env or not mod.viewport or not mod.camera then
-			return
-		end
-
-		local vp = mod.viewport
-
-		if vp then
-			ShadingEnvironment.blend(shading_env, World.get_data(world, "shading_settings"))
-			ShadingEnvironment.apply(shading_env)
-
-			if World.has_data(world, "shading_callback") and not Viewport.get_data(vp, "avoid_shading_callback") then
-				local callback = World.get_data(world, "shading_callback")
-
-				callback(world, shading_env, World.get_data(world, "render_queue")[1])
-			end
-
-			local camera = mod.camera
-
-			Application.render_world(world, camera, vp, shading_env)
-		else
-			local render_queue = World.get_data(world, "render_queue")
-
-			if table.is_empty(render_queue) then
-				Application.update_render_world(world)
-
-				return
-			end
-		end
-	end
-)
- ]]
 -- hook I stole from Streaming Info
 mod:hook_safe(
 	IngameUI,
@@ -729,6 +755,12 @@ mod.on_game_state_changed = function(status, state)
 end
 
 mod.on_setting_changed = function(setting_name)
+	if setting_name == "debug_mode" then
+		if not mod:get("debug_mode") then
+			mod:echo("destroy")
+			mod.destroy_debug_lines()
+		end
+	end
 	return
 end
 

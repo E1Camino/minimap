@@ -51,9 +51,7 @@ local level_data = {
                     12
                 }
             },
-            near = 4,
-            area = 8,
-            color = randomGreenBlueishColor
+            area = 8
         },
         ammo = {
             points = {
@@ -78,8 +76,43 @@ local level_data = {
                     13.64
                 }
             },
-            near = 8,
-            color = randomGreenBlueishColor
+            near = 23
+        },
+        lohner = {
+            points = {
+                {
+                    -11.6846,
+                    -0.0396298,
+                    10
+                },
+                {
+                    -3.75362,
+                    4.80794,
+                    10
+                },
+                {
+                    5.44146,
+                    4.16039,
+                    10
+                },
+                {
+                    6.28618,
+                    -0.387159,
+                    10
+                },
+                {
+                    8.85047,
+                    -3.24998,
+                    10
+                },
+                {
+                    3.65326,
+                    -7.06038,
+                    10
+                }
+            },
+            near = 21,
+            area = 11
         },
         near = 200,
         far = 10000,
