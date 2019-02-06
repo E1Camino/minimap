@@ -6,7 +6,7 @@ mod.camera = nil
 mod.active = false
 mod.offset_speed = 0.1
 mod.currentProp = 1
-mod.propsForToggle = {"near", "far", "area", "near"}
+mod.propsForToggle = {"near", "far", "area"}
 mod.viewports = nil
 mod._get_default_settings = function(self)
 	return {
@@ -32,7 +32,7 @@ end
 mod.decreaseProp = function()
 	local prop_key = mod.propsForToggle[mod.currentProp]
 	local old_value = mod._current_settings[prop_key]
-	mod._set_props[prop_key] = old_value / mod.offset_speed
+	mod._set_props[prop_key] = old_value - mod.offset_speed
 end
 mod.increasePropSpeed = function()
 	mod.offset_speed = mod.offset_speed + 0.1
@@ -41,8 +41,9 @@ mod.decreasePropSpeed = function()
 	mod.offset_speed = mod.offset_speed - 0.1
 end
 mod.toggleProp = function(propKey)
-	if not propKey then
+	if propKey == true then
 		mod.currentProp = mod.currentProp + 1 % table.getn(mod.propsForToggle)
+		return
 	else
 		local index = {}
 		for k, v in pairs(mod.propsForToggle) do
@@ -344,7 +345,7 @@ mod.check_polygons = function(dt)
 			end
 		end
 	end
-	-- favor custom set stuff
+	-- favour custom set stuff
 	for si, setting_key in pairs(setting_keys) do
 		local set_prop = mod._set_props[setting_key]
 		if set_prop then
@@ -605,6 +606,8 @@ mod.setProps = function(key, value)
 	elseif key == "pos" then
 		mod:set("followPlayer", false)
 		mod:saveCamera(value)
+	elseif key == "offset_speed" then
+		mod.offset_speed = value
 	else
 		mod:echo(key .. " is not a supported")
 	end
@@ -613,6 +616,8 @@ end
 mod.unsetProps = function(key)
 	if key == "area" or key == "size" or key == "near" or key == "far" or key == "height" then
 		mod._set_props[key] = nil
+	elseif key == "offset_speed" then
+		mod.offset_speed = 0.1
 	else
 		mod:echo(key .. " is not a supported")
 	end
