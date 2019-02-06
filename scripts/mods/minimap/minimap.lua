@@ -93,7 +93,7 @@ end
 
 mod.create_debug_lines = function()
 	local world = Application.main_world()
-	if not world or not Managers.player or mod._debug_lines then
+	if not world or not Managers.player or not mod._debug_lines == nil then
 		return
 	end
 	mod._debug_lines = World.create_line_object(world, true)
