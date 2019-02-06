@@ -19,7 +19,10 @@ end
 mod._character_offset = 0
 mod._current_settings = mod:_get_default_settings()
 mod._set_props = {}
-mod._current_poly_insight = nil
+mod._current_poly_inside = nil
+
+mod._current_debug_text = ""
+mod._printed_debug_text = ""
 
 mod.camera_positions = {}
 mod.current_camera_index = nil
@@ -56,8 +59,15 @@ mod.toggleProp = function(propKey)
 end
 
 mod.print_live = function()
-	mod.destroy_debug_lines()
-	mod.create_debug_lines()
+	if mod:get("debug_mode") then
+		mod.destroy_debug_lines()
+		mod.create_debug_lines()
+	end
+
+	if mod._current_debug_text ~= mod._printed_debug_text then
+		mod:echo(mod._current_debug_text)
+		mod._printed_debug_text = mod._current_debug_text
+	end
 end
 
 mod.print_debug = function(dt)
@@ -68,11 +78,11 @@ mod.print_debug = function(dt)
 	local viewport_name = "player_1"
 	local world = Application.main_world()
 	local s = World.get_data(world, "shading_settings")
-	mod:dump(s, "shading s", 2)
+	mod:dump(s, "shading s", 3)
 	local o_viewport = ScriptWorld.viewport(world, viewport_name)
-	local original_camera = ScriptViewport.camera(o_viewport)
-	local original_camera_position = ScriptCamera.position(original_camera)
-	mod:echo(original_camera_position)
+	local local_player_unit = Managers.player:local_player().player_unit
+	local player_position = Unit.local_position(local_player_unit, 0)
+	mod:echo(player_position)
 
 	local oldRot = ScriptCamera.rotation(mod.camera)
 	mod:echo(
@@ -147,7 +157,7 @@ mod._create_debug_points = function(z)
 					p_p.y = prev[2]
 					p_p.z = z or prev[3]
 					prev = point
-					if poly_name == mod._current_poly_insight then
+					if poly_name == mod._current_poly_inside then
 						LineObject.add_line(mod._debug_lines, Color(255, 255, 0, 0), p_p, c_p)
 						LineObject.add_sphere(mod._debug_lines, Color(255, 255, 0, 0), c_p, 0.05)
 					elseif si == 1 then
@@ -316,10 +326,10 @@ mod.check_polygons = function(dt)
 	local settings = mod:_get_default_settings()
 	local overwrite_settings = table.clone(settings)
 	local local_player_unit = Managers.player:local_player().player_unit
-	local player_position = Unit.local_position(local_player_unit, 0)
+	local position = Unit.local_position(local_player_unit, 0)
 
 	local setting_keys = {"near", "far", "area", "height"}
-	local new_insight = ""
+	local new_inside = ""
 
 	for poly_name in pairs(mod._level_settings) do
 		local polygon = mod._level_settings[poly_name]
@@ -331,10 +341,12 @@ mod.check_polygons = function(dt)
 			end
 		else
 			-- check if camera is inside poly
+			mod._current_debug_text = "check poly " .. poly_name
 			local pre = mod._pre_calc(poly_name)
-			local inside = mod:is_point_in_polygon(player_position, polygon.points, pre)
+			local inside = mod:is_point_in_polygon(position, polygon.points, pre, debug)
 			if inside then
-				new_insight = poly_name
+				new_inside = poly_name
+				mod._current_debug_text = "in poly " .. poly_name
 				for si, setting_key in pairs(setting_keys) do
 					-- load setting from polygon
 					local new_setting = mod._level_settings[poly_name][setting_key]
@@ -352,67 +364,33 @@ mod.check_polygons = function(dt)
 			overwrite_settings[setting_key] = set_prop
 		end
 	end
-	mod._current_poly_insight = new_insight
+	mod._current_poly_inside = new_inside
 	mod._current_settings = overwrite_settings
 end
 
-mod.is_point_in_polygon_ = function(self, point, vertices, pre)
-	--[[ 	if not pre.corners then
-		return false
-	end
-	mod:dump(vertices, "vertices", 2)
-	-- http://alienryderflex.com/polygon/
-	local previous = pre.corners
-	local vertx = pre.polyX
-	local verty = pre.polyY
-	local testx = point.x
-	local testy = point.y
-	local oddNodes = false
-
-	-- i0 j1
-	for current = 1, pre.corners do
-		local betweenY = ( ((verty[previous]>testy) != (verty[current]>testy)) &&
-		(testx < (vertx[current]-vertx[previous]) * (testy-verty[previous]) / (verty[current]-verty[previous]) + vertx[previous]) )
-
-		if (betweenY) then
-
-				if not oddNodes then
-					oddNodes = true
-				else
-					oddNodes = false
-				end
-
-		end
-		j = i
-	end
-	return oddNodes ]]
-end
-mod.is_point_in_polygon = function(self, point, vertices, pre)
+mod.is_point_in_polygon = function(self, point, vertices, pre, debug)
 	if not pre.corners then
 		return false
 	end
 	--mod:dump(vertices, "vertices", 2)
 	-- http://alienryderflex.com/polygon/
-	local previous = pre.corners
+	local corners = pre.corners
 	local polyX = pre.polyX
 	local polyY = pre.polyY
+	local multiple = pre.multiple
+	local constant = pre.constant
 	local x = point.x
 	local y = point.y
 	local oddNodes = false
 
-	for current = 1, pre.corners do
-		local betweenY = (polyY[current] < y and polyY[previous] >= y) or (polyY[previous] < y and polyY[current] >= y)
-
-		if (betweenY) then
-			local calc =
-				polyX[current] + (y - polyY[current]) / (polyY[previous] - polyY[current]) * (polyX[previous] - polyX[current])
-			if calc < x then
-				if not oddNodes then
-					oddNodes = true
-				else
-					oddNodes = false
-				end
-			end
+	local j = corners
+	for i = 1, corners do
+		local c1 = (polyY[i] < y and polyY[j] >= y)
+		local c2 = (polyY[j] < y and polyY[i] >= y)
+		local betweenY = c1 or c2
+		if (c1 or c2) then
+			local c3 = (y * multiple[i] + constant[i] < x)
+			oddNodes = oddNodes ~= c3
 		end
 		j = i
 	end
@@ -743,9 +721,7 @@ mod.update = function(dt)
 
 	mod:syncCam(dt)
 	mod:check_polygons(dt)
-	if mod:get("debug_mode") then
-		mod.print_live()
-	end
+	mod.print_live()
 end
 
 mod.on_unload = function(exit_game)
