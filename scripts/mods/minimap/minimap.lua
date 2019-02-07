@@ -80,7 +80,7 @@ mod.print_debug = function(dt)
 
 	mod._should_redraw_debug_lines = true
 	local viewport_name = "player_1"
-	local world = Application.main_world()
+	local world = mod.world
 	local s = World.get_data(world, "shading_settings")
 	mod:dump(s, "shading s", 3)
 	local o_viewport = ScriptWorld.viewport(world, viewport_name)
@@ -110,7 +110,7 @@ mod.print_debug = function(dt)
 end
 
 mod.create_debug_lines = function()
-	local world = Application.main_world()
+	local world = mod.world
 	if not world or not Managers.player or not mod._debug_lines == nil then
 		return
 	end
@@ -180,72 +180,8 @@ mod._create_debug_points = function(z)
 	end
 end
 
-mod:hook_origin(
-	ScriptWorld,
-	"render",
-	function(world)
-		local shading_env = World.get_data(world, "shading_environment")
-
-		if not shading_env then
-			return
-		end
-
-		local global_free_flight_viewport = World.get_data(world, "global_free_flight_viewport")
-
-		if global_free_flight_viewport then
-			ShadingEnvironment.blend(shading_env, World.get_data(world, "shading_settings"))
-			ShadingEnvironment.apply(shading_env)
-
-			if
-				World.has_data(world, "shading_callback") and
-					not Viewport.get_data(global_free_flight_viewport, "avoid_shading_callback")
-			 then
-				local callback = World.get_data(world, "shading_callback")
-
-				callback(world, shading_env, World.get_data(world, "render_queue")[1])
-			end
-
-			local camera = ScriptViewport.camera(global_free_flight_viewport)
-
-			Application.render_world(world, camera, global_free_flight_viewport, shading_env)
-		else
-			local render_queue = World.get_data(world, "render_queue")
-
-			if table.is_empty(render_queue) then
-				Application.update_render_world(world)
-
-				return
-			end
-
-			for _, viewport in ipairs(render_queue) do
-				if not World.get_data(world, "avoid_blend") then
-					ShadingEnvironment.blend(
-						shading_env,
-						World.get_data(world, "shading_settings"),
-						World.get_data(world, "override_shading_settings")
-					)
-				end
-
-				if World.has_data(world, "shading_callback") and not Viewport.get_data(viewport, "avoid_shading_callback") then
-					local callback = World.get_data(world, "shading_callback")
-
-					callback(world, shading_env, viewport)
-				end
-
-				if not World.get_data(world, "avoid_blend") then
-					ShadingEnvironment.apply(shading_env)
-				end
-
-				local camera = ScriptViewport.camera(viewport)
-
-				Application.render_world(world, camera, viewport, shading_env)
-			end
-		end
-	end
-)
-
 mod.destroy_debug_lines = function()
-	local world = Application.main_world()
+	local world = mod.world
 	if not mod._debug_lines or not world then
 		return
 	end
@@ -254,7 +190,7 @@ mod.destroy_debug_lines = function()
 end
 
 mod._get_viewport_cam = function(viewport_name)
-	local world = Application.main_world()
+	local world = mod.world
 	local o_viewport = ScriptWorld.viewport(world, viewport_name)
 
 	return ScriptViewport.camera(o_viewport)
@@ -479,7 +415,8 @@ mod._get_level_settings = function(self)
 end
 
 mod.createViewport = function()
-	local world = Application.main_world()
+	local world = Managers.world:world("level_world")
+	mod.world = world
 	mod.viewport = mod._create_minimap_viewport(world, "minimap", "default", 2)
 	ScriptWorld.activate_viewport(world, mod.viewport)
 	mod.active = true
@@ -487,7 +424,7 @@ end
 
 mod.destroyViewport = function()
 	mod.destroy_debug_lines()
-	local world = Application.main_world()
+	local world = mod.world
 	ScriptWorld.destroy_viewport(world, "minimap")
 	mod.viewport = nil
 	mod.camera = nil
@@ -505,7 +442,6 @@ mod._create_minimap_viewport = function(
 	add_shadow_cull_camera,
 	force_no_scaling)
 	local viewports = World.get_data(world, "viewports")
-	mod.world = world
 
 	fassert(viewports[name] == nil, "Viewport %q already exists", name)
 
