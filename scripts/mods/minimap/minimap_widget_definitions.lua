@@ -4,7 +4,7 @@ local MinimapUIElement = {
     passes = {
         {
             style_id = "m_viewport",
-            pass_type = "m_viewport",
+            pass_type = "viewport",
             content_id = "m_viewport"
         },
         {

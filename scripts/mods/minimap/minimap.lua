@@ -16,7 +16,6 @@ mod._get_default_settings = function(self)
 		area = mod:get("area")
 	}
 end
-mod._character_offset = 0
 mod._current_settings = mod:_get_default_settings()
 mod._set_props = {}
 mod._current_poly_inside = nil
@@ -60,8 +59,11 @@ end
 
 mod.print_live = function()
 	if mod:get("debug_mode") then
-		mod.destroy_debug_lines()
-		mod.create_debug_lines()
+		if mod._debug_lines == nil or mod._should_redraw_debug_lines then
+			mod._should_redraw_debug_lines = false
+			mod.destroy_debug_lines()
+			mod.create_debug_lines()
+		end
 	end
 
 	if mod._current_debug_text ~= mod._printed_debug_text then
@@ -75,6 +77,8 @@ mod.print_debug = function(dt)
 		mod:destroyViewport()
 		mod:createViewport()
 	end
+
+	mod._should_redraw_debug_lines = true
 	local viewport_name = "player_1"
 	local world = Application.main_world()
 	local s = World.get_data(world, "shading_settings")
@@ -94,7 +98,10 @@ mod.print_debug = function(dt)
 		(mod.propsForToggle[mod.currentProp] == "far" and "*" or "") ..
 			"far " .. mod:get("far") .. " " .. mod._current_settings.far
 	)
-	mod:echo((mod.propsForToggle[mod.currentProp] == "height" and "*" or "") .. "height " .. mod:get("height"))
+	mod:echo(
+		(mod.propsForToggle[mod.currentProp] == "height" and "*" or "") ..
+			"height " .. mod:get("height") .. " " .. mod._current_settings.height
+	)
 	mod:echo(
 		(mod.propsForToggle[mod.currentProp] == "area" and "*" or "") ..
 			"area " .. mod:get("area") .. " " .. mod._current_settings.area
@@ -275,10 +282,6 @@ mod.syncCam = function(dt)
 	local far = mod._current_settings.far
 	local near = mod._current_settings.near
 
-	if mod._character_offset == 0 then
-		mod._character_offset = original_camera_position.z
-	end
-
 	camera_position_new.z = cameraHeight
 	local direction = Vector3.normalize(Vector3(0, 0, -1))
 	local rotation = Quaternion.look(direction)
@@ -291,8 +294,8 @@ mod.syncCam = function(dt)
 	Camera.set_projection_type(mod.camera, Camera.ORTHOGRAPHIC)
 	Camera.set_projection_type(mod.shadow_cull_camera, Camera.ORTHOGRAPHIC)
 
-	local cfar = cameraHeight + mod._character_offset + far
-	local cnear = cameraHeight + mod._character_offset - near
+	local cfar = cameraHeight + far
+	local cnear = cameraHeight - near
 	Camera.set_far_range(mod.camera, cfar)
 	Camera.set_near_range(mod.camera, cnear)
 	Camera.set_far_range(mod.shadow_cull_camera, cfar)
@@ -483,6 +486,7 @@ mod.createViewport = function()
 end
 
 mod.destroyViewport = function()
+	mod.destroy_debug_lines()
 	local world = Application.main_world()
 	ScriptWorld.destroy_viewport(world, "minimap")
 	mod.viewport = nil
@@ -669,12 +673,6 @@ mod:hook(
 	IngameUI,
 	"_update_hud_visibility",
 	function(func, self, disable_ingame_ui, in_score_screen)
-		--[[ 		local player = Managers.player:local_player(1)
-		local vp_name = player and player.viewport_name
-		if mod.camera then
-			mod:echo(vp_name)
-		end
- ]]
 		local current_view = self.current_view
 		local cutscene_system = self.cutscene_system
 		local mission_vote_in_progress = self.mission_voting_ui:is_active()
