@@ -79,11 +79,7 @@ mod.print_debug = function(dt)
 	end
 
 	mod._should_redraw_debug_lines = true
-	local viewport_name = "player_1"
-	local world = mod.world
-	local s = World.get_data(world, "shading_settings")
-	mod:dump(s, "shading s", 3)
-	local o_viewport = ScriptWorld.viewport(world, viewport_name)
+	mod:dump(mod.ingame_ui, "ingame ui", 1)
 	local local_player_unit = Managers.player:local_player().player_unit
 	local player_position = Unit.local_position(local_player_unit, 0)
 	mod:echo(player_position)
@@ -257,7 +253,7 @@ mod.syncCam = function(dt)
 	Viewport.set_rect(mod.viewport, unpack(Viewport.get_data(mod.viewport, "rect")))
 end
 
-mod.check_polygons = function(dt)
+mod.check_locations = function(dt)
 	if not mod._level_settings then
 		return
 	end
@@ -550,24 +546,7 @@ mod:hook_safe(
 	IngameUI,
 	"update",
 	function(self, dt, t, disable_ingame_ui, end_of_level_ui) -- luacheck: no unused
-		mod.ingameUI = self
-		--[[ 		local level_transition_handler = Managers.state.game_mode.level_transition_handler
-		local level_key = level_transition_handler:get_current_level_keys()
-		local is_in_inn = level_key == "inn_level"
-
-		local in_score_screen = end_of_level_ui ~= nil
-		local end_screen_active = self:end_screen_active()
-
-		local game_mode_manager = Managers.state.game_mode
-		local round_started = game_mode_manager:is_round_started()
-
-		if not (is_in_inn or in_score_screen or end_screen_active) then
-			if round_started then
-				return
-			end
-		end
-
-		mod.draw_info(self) ]]
+		mod.ingame_ui = self
 	end
 )
 mod:hook_safe(
@@ -648,13 +627,11 @@ mod.update = function(dt)
 		return
 	end
 
-	if not mod._level_settings then
-		local s = mod:_get_level_settings()
-		mod._level_settings = s
-	end
+	local s = mod:_get_level_settings()
+	mod._level_settings = s
 
 	mod:syncCam(dt)
-	mod:check_polygons(dt)
+	mod:check_locations(dt)
 	mod.print_live()
 end
 
