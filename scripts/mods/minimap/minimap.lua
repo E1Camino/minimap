@@ -330,10 +330,12 @@ mod.check_location = function(location, point)
 			return mod:is_point_in_polygon(point, location.check.features, pre)
 		end
 		-- check if players is above given height
-		if location.above then
+		if type == "above" then
+			return point.z > location.check.height
 		end
 		-- check if players is above given height
-		if location.below then
+		if type == "below" then
+			return point.z < location.check.height
 		end
 	end
 
