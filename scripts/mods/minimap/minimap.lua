@@ -135,50 +135,56 @@ mod._create_debug_points = function(z)
 		return
 	end
 
-	-- location iteration
-	for location in pairs(mod._level_settings.children) do
-		local c = Color(255, 255, 255, 255)
-		if not location.check then
-			mod:echo("missing location check")
-			mod:echo(location)
-		else
-			if location.check.type == "polygon" then
-				if location.settings.color then
-					c = location.settings.color
-				end
-				-- highlight location that we are inside
-				-- check if camera is inside location
-				local points = location.check.features
-				if points then
-					local pre = mod._pre_calc(location)
-					local prev = points[#points]
+	function paint_all_children(parent)
+		if parent.children then
+			-- location iteration
+			for location_name, location in pairs(parent.children) do
+				local c = Color(255, 255, 255, 255)
 
-					--polygon point iteration
-					for si, point in pairs(points) do
-						local c_p = Vector3.zero()
-						c_p.x = point[1]
-						c_p.y = point[2]
-						c_p.z = z or point[3]
-						local p_p = Vector3.zero()
-						p_p.x = prev[1]
-						p_p.y = prev[2]
-						p_p.z = z or prev[3]
-						prev = point
-						if location_name == mod._current_location_inside then
-							LineObject.add_line(mod._debug_lines, Color(255, 255, 0, 0), p_p, c_p)
-							LineObject.add_sphere(mod._debug_lines, Color(255, 255, 0, 0), c_p, 0.05)
-						elseif si == 1 then
-							LineObject.add_line(mod._debug_lines, Color(255, 255, 255, 0), p_p, c_p)
-							LineObject.add_sphere(mod._debug_lines, Color(255, 255, 255, 0), c_p, 0.05)
-						else
-							LineObject.add_line(mod._debug_lines, c, p_p, c_p)
-							LineObject.add_sphere(mod._debug_lines, c, c_p, 0.05)
+				-- paint
+				if location.check.type == "polygon" then
+					if location.settings.color then
+						c = location.settings.color
+					end
+					-- highlight location that we are inside
+					-- check if camera is inside location
+					local points = location.check.features
+					if points then
+						local pre = mod._pre_calc(location)
+						local prev = points[#points]
+
+						--polygon point iterationw
+						for si, point in pairs(points) do
+							local c_p = Vector3.zero()
+							c_p.x = point[1]
+							c_p.y = point[2]
+							c_p.z = z or point[3]
+							local p_p = Vector3.zero()
+							p_p.x = prev[1]
+							p_p.y = prev[2]
+							p_p.z = z or prev[3]
+							prev = point
+							if location_name == mod._current_location_inside then
+								LineObject.add_line(mod._debug_lines, Color(255, 255, 0, 0), p_p, c_p)
+								LineObject.add_sphere(mod._debug_lines, Color(255, 255, 0, 0), c_p, 0.05)
+							elseif si == 1 then
+								LineObject.add_line(mod._debug_lines, Color(255, 255, 255, 0), p_p, c_p)
+								LineObject.add_sphere(mod._debug_lines, Color(255, 255, 255, 0), c_p, 0.05)
+							else
+								LineObject.add_line(mod._debug_lines, c, p_p, c_p)
+								LineObject.add_sphere(mod._debug_lines, c, c_p, 0.05)
+							end
 						end
 					end
 				end
+
+				-- paint children of child current location
+				paint_all_children(location)
 			end
 		end
 	end
+
+	paint_all_children(mod._level_settings)
 end
 
 mod.destroy_debug_lines = function()
