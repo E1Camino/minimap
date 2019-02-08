@@ -2,6 +2,13 @@ local randomGreenBlueishColor = function()
     return Color(255, math.random(1, 40), math.random(1, 255), math.random(1, 255))
 end
 
+local inn_default = {
+    near = 100,
+    far = 10000,
+    height = 2000,
+    area = 12
+}
+
 local level_data = {
     inn_level = {
         name = "inn_level",
@@ -36,6 +43,16 @@ local level_data = {
                 settings = {
                     area = 8,
                     near = 13.52
+                },
+                children = {
+                    farm_top_of_roof = {
+                        name = "farm_top_of_roof",
+                        check = {
+                            type = "above",
+                            height = 13
+                        },
+                        settings = inn_default
+                    }
                 }
             },
             ammo = {
@@ -143,7 +160,7 @@ local level_data = {
                     }
                 },
                 settings = {
-                    near = 10,
+                    near = 15,
                     area = 8
                 },
                 children = {
@@ -195,8 +212,17 @@ local level_data = {
                             }
                         },
                         settings = {
-                            near = 21,
-                            area = 11
+                            near = 21
+                        }
+                    },
+                    farm_top_of_roof = {
+                        name = "keep_level_1",
+                        check = {
+                            type = "above",
+                            height = 7.6
+                        },
+                        settings = {
+                            near = 12
                         }
                     },
                     sienna = {
@@ -265,12 +291,7 @@ local level_data = {
                 }
             }
         },
-        settings = {
-            near = 100,
-            far = 10000,
-            height = 2000,
-            area = 12
-        }
+        settings = inn_default
     }
 }
 return level_data
