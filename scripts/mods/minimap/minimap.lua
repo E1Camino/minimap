@@ -18,7 +18,7 @@ mod._get_default_settings = function(self)
 end
 mod._current_settings = mod:_get_default_settings()
 mod._set_props = {}
-mod._current_poly_inside = nil
+mod._current_location_inside = nil
 
 mod._current_debug_text = ""
 mod._printed_debug_text = ""
@@ -64,12 +64,17 @@ mod.print_live = function()
 			mod.destroy_debug_lines()
 			mod.create_debug_lines()
 		end
-	end
 
-	if mod._current_debug_text ~= mod._printed_debug_text then
-		mod:echo(mod._current_debug_text)
-		mod._printed_debug_text = mod._current_debug_text
+		if mod._current_debug_text ~= mod._printed_debug_text then
+			mod:echo(mod._current_debug_text)
+			mod._printed_debug_text = mod._current_debug_text
+		end
 	end
+	local local_player_unit = Managers.player:local_player().player_unit
+	local player_position = Unit.local_position(local_player_unit, 0)
+	local w, h = Application.resolution()
+	local pos = Vector3(100, h - 100, 999)
+	pos = mod.ingame_ui:_show_text("" .. player_position.x .. ", " .. player_position.y .. ", " .. player_position.z, pos)
 end
 
 mod.print_debug = function(dt)
@@ -79,7 +84,6 @@ mod.print_debug = function(dt)
 	end
 
 	mod._should_redraw_debug_lines = true
-	mod:dump(mod.ingame_ui, "ingame ui", 1)
 	local local_player_unit = Managers.player:local_player().player_unit
 	local player_position = Unit.local_position(local_player_unit, 0)
 	mod:echo(player_position)
@@ -102,7 +106,6 @@ mod.print_debug = function(dt)
 		(mod.propsForToggle[mod.currentProp] == "area" and "*" or "") ..
 			"area " .. mod:get("area") .. " " .. mod._current_settings.area
 	)
-	mod:dump(mod._set_props, "props", 2)
 end
 
 mod.create_debug_lines = function()
@@ -123,7 +126,7 @@ mod.create_debug_lines = function()
 	local player_pose = Unit.local_pose(local_player_unit, 0)
 	LineObject.add_axes(mod._debug_lines, player_pose, 1)
 
-	-- paint level setting polygons
+	-- paint level setting locations
 	mod._create_debug_points()
 	LineObject.dispatch(world, mod._debug_lines)
 end
@@ -132,43 +135,45 @@ mod._create_debug_points = function(z)
 		return
 	end
 
-	-- polygon iteration
-	for poly_name in pairs(mod._level_settings) do
-		local polygon = mod._level_settings[poly_name]
+	-- location iteration
+	for location in pairs(mod._level_settings.children) do
 		local c = Color(255, 255, 255, 255)
-		if poly_name == "near" or poly_name == "far" or poly_name == "area" or poly_name == "height" then
+		if not location.check then
+			mod:echo("missing location check")
+			mod:echo(location)
 		else
-			if poly_name.color then
-				c = poly_name.color
-			end
-			-- highlight polygon that we are in^
-			-- check if camera is inside poly
-			local s = mod._level_settings[poly_name]
-			if s.points then
-				local pre = mod._pre_calc(poly_name)
-				local prev = polygon.points[#polygon.points]
+			if location.check.type == "polygon" then
+				if location.settings.color then
+					c = location.settings.color
+				end
+				-- highlight location that we are inside
+				-- check if camera is inside location
+				local points = location.check.features
+				if points then
+					local pre = mod._pre_calc(location)
+					local prev = points[#points]
 
-				--point iteration
-				for si, point in pairs(polygon.points) do
-					--					mod:echo(si)
-					local c_p = Vector3.zero()
-					c_p.x = point[1]
-					c_p.y = point[2]
-					c_p.z = z or point[3]
-					local p_p = Vector3.zero()
-					p_p.x = prev[1]
-					p_p.y = prev[2]
-					p_p.z = z or prev[3]
-					prev = point
-					if poly_name == mod._current_poly_inside then
-						LineObject.add_line(mod._debug_lines, Color(255, 255, 0, 0), p_p, c_p)
-						LineObject.add_sphere(mod._debug_lines, Color(255, 255, 0, 0), c_p, 0.05)
-					elseif si == 1 then
-						LineObject.add_line(mod._debug_lines, Color(255, 255, 255, 0), p_p, c_p)
-						LineObject.add_sphere(mod._debug_lines, Color(255, 255, 255, 0), c_p, 0.05)
-					else
-						LineObject.add_line(mod._debug_lines, c, p_p, c_p)
-						LineObject.add_sphere(mod._debug_lines, c, c_p, 0.05)
+					--polygon point iteration
+					for si, point in pairs(points) do
+						local c_p = Vector3.zero()
+						c_p.x = point[1]
+						c_p.y = point[2]
+						c_p.z = z or point[3]
+						local p_p = Vector3.zero()
+						p_p.x = prev[1]
+						p_p.y = prev[2]
+						p_p.z = z or prev[3]
+						prev = point
+						if location_name == mod._current_location_inside then
+							LineObject.add_line(mod._debug_lines, Color(255, 255, 0, 0), p_p, c_p)
+							LineObject.add_sphere(mod._debug_lines, Color(255, 255, 0, 0), c_p, 0.05)
+						elseif si == 1 then
+							LineObject.add_line(mod._debug_lines, Color(255, 255, 255, 0), p_p, c_p)
+							LineObject.add_sphere(mod._debug_lines, Color(255, 255, 255, 0), c_p, 0.05)
+						else
+							LineObject.add_line(mod._debug_lines, c, p_p, c_p)
+							LineObject.add_sphere(mod._debug_lines, c, c_p, 0.05)
+						end
 					end
 				end
 			end
@@ -195,8 +200,6 @@ end
 mod.syncCam = function(dt)
 	local local_player_unit = Managers.player:local_player().player_unit
 	local player_position = Unit.local_position(local_player_unit, 0)
-
-	--ScriptCamera.set_local_position(mod.camera, player_position)
 
 	local camera_position_new = Vector3.zero()
 	camera_position_new.x = player_position.x
@@ -258,56 +261,83 @@ mod.check_locations = function(dt)
 		return
 	end
 
-	local settings = mod:_get_default_settings()
-	local overwrite_settings = table.clone(settings)
+	local new_settings = table.clone(mod._current_settings)
+	local new_inside = ""
+
+	-- player position
 	local local_player_unit = Managers.player:local_player().player_unit
 	local position = Unit.local_position(local_player_unit, 0)
 
-	local setting_keys = {"near", "far", "area", "height"}
-	local new_inside = ""
+	-- local overwrite function
+	local overwrite = function(location)
+		if not location.settings then
+			return
+		end
+		for setting_key, setting in pairs(location.settings) do
+			new_settings[setting_key] = setting
+		end
+	end
 
-	for poly_name in pairs(mod._level_settings) do
-		local polygon = mod._level_settings[poly_name]
-		if poly_name == "near" or poly_name == "far" or poly_name == "area" or poly_name == "height" then
-			-- level default settings (instead of general default settings)
-			local new_setting = mod._level_settings[poly_name]
-			if new_setting then
-				overwrite_settings[poly_name] = new_setting
-			end
-		else
-			-- check if camera is inside poly
-			mod._current_debug_text = "check poly " .. poly_name
-			local pre = mod._pre_calc(poly_name)
-			local inside = mod:is_point_in_polygon(position, polygon.points, pre, debug)
-			if inside then
-				new_inside = poly_name
-				mod._current_debug_text = "in poly " .. poly_name
-				for si, setting_key in pairs(setting_keys) do
-					-- load setting from polygon
-					local new_setting = mod._level_settings[poly_name][setting_key]
-					if new_setting then
-						overwrite_settings[setting_key] = new_setting
+	overwrite(mod._level_settings)
+	local hasChildren = true
+	local location_list = mod._level_settings.children
+	while (hasChildren) do
+		hasChildren = false
+		for location_name, location in pairs(location_list) do
+			if location_name == "name" or location_name == "settings" then -- ignore the name attribute
+			else
+				local inside = mod.check_location(location, position)
+				if inside then
+					-- remember this location
+					new_inside = location.name
+					mod._current_debug_text = "in location " .. location_name
+
+					-- get the settings declared with this location
+					overwrite(location)
+
+					-- check if this location has child locations and proceed with them
+					if location.children then
+						hasChildren = true
+						location_list = location.children
 					end
 				end
 			end
 		end
 	end
-	-- favour custom set stuff
-	for si, setting_key in pairs(setting_keys) do
-		local set_prop = mod._set_props[setting_key]
-		if set_prop then
-			overwrite_settings[setting_key] = set_prop
-		end
-	end
-	mod._current_poly_inside = new_inside
-	mod._current_settings = overwrite_settings
+
+	mod._current_location_inside = new_inside
+	mod._current_settings = new_settings
 end
 
-mod.is_point_in_polygon = function(self, point, vertices, pre, debug)
+mod.check_location = function(location, point)
+	if location == nil then
+		return false
+	end
+	if location.name == nil then
+		mod:dump(location, "loc", 3)
+	else
+		mod._current_debug_text = "check location " .. location["name"]
+		-- check if player is inside polygon
+		local type = location.check.type
+		if type == "polygon" then
+			local pre = mod._pre_calc(location)
+			return mod:is_point_in_polygon(point, location.check.features, pre)
+		end
+		-- check if players is above given height
+		if location.above then
+		end
+		-- check if players is above given height
+		if location.below then
+		end
+	end
+
+	return false
+end
+
+mod.is_point_in_polygon = function(self, point, vertices, pre)
 	if not pre.corners then
 		return false
 	end
-	--mod:dump(vertices, "vertices", 2)
 	-- http://alienryderflex.com/polygon/
 	local corners = pre.corners
 	local polyX = pre.polyX
@@ -332,18 +362,17 @@ mod.is_point_in_polygon = function(self, point, vertices, pre, debug)
 	return oddNodes
 end
 
-mod._pre_calc = function(polygon_name)
+mod._pre_calc = function(location)
 	-- http://alienryderflex.com/polygon/
-	local s = mod._level_settings[polygon_name]
-
 	-- only precalc once
-	if s._pre then
-		return s._pre
+	if location._pre then
+		return location._pre
 	end
 	-- we need points to pre calc
-	if not s.points or s._pre then
+	if not location.check.type == "polygon" then
 		return
 	end
+	local points = location.check.features
 
 	--bbox for fast forward checks
 	local minX = 10000
@@ -352,12 +381,12 @@ mod._pre_calc = function(polygon_name)
 	local maxY = -10000
 
 	-- more advanced preps
-	local corners = #s.points
+	local corners = #points
 	local polyX = {}
 	local polyY = {}
 	local polyZ = {}
 
-	for i, p in pairs(s.points) do
+	for i, p in pairs(points) do
 		polyX[i] = p[1]
 		polyY[i] = p[2]
 		polyZ[i] = p[3]
@@ -368,7 +397,7 @@ mod._pre_calc = function(polygon_name)
 		maxY = math.max(maxY, p[2])
 		minY = math.min(minY, p[2])
 	end
-	mod:echo(maxX .. " " .. minX .. " " .. maxY .. " " .. minY)
+
 	local constant = {}
 	local multiple = {}
 
@@ -400,7 +429,7 @@ mod._pre_calc = function(polygon_name)
 			minY = minY
 		}
 	}
-	mod._level_settings[polygon_name]._pre = pre
+	location._pre = pre
 	return pre
 end
 
