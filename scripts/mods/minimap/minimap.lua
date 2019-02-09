@@ -58,23 +58,19 @@ mod.toggleProp = function(propKey)
 end
 
 mod.print_live = function()
-	if mod:get("debug_mode") then
-		if mod._debug_lines == nil or mod._should_redraw_debug_lines then
-			mod._should_redraw_debug_lines = false
-			mod.destroy_debug_lines()
-			mod.create_debug_lines()
-		end
+	local d = mod:get("debug_mode")
 
-		if mod._current_debug_text ~= mod._printed_debug_text then
-			mod:echo(mod._current_debug_text)
-			mod._printed_debug_text = mod._current_debug_text
+	if d then
+		local local_player_unit = Managers.player:local_player().player_unit
+		local player_position = Unit.local_position(local_player_unit, 0)
+		local w, h = Application.resolution()
+		local pos = Vector3(100, h - 100, 999)
+		pos =
+			mod.ingame_ui:_show_text("pos: " .. player_position.x .. ", " .. player_position.y .. ", " .. player_position.z, pos)
+		if not mod._current_debug_text == nil then
+			pos = mod.ingame_ui:_show_text("debug:" .. mod._current_debug_text)
 		end
 	end
-	local local_player_unit = Managers.player:local_player().player_unit
-	local player_position = Unit.local_position(local_player_unit, 0)
-	local w, h = Application.resolution()
-	local pos = Vector3(100, h - 100, 999)
-	pos = mod.ingame_ui:_show_text("" .. player_position.x .. ", " .. player_position.y .. ", " .. player_position.z, pos)
 end
 
 mod.print_debug = function(dt)
@@ -83,7 +79,7 @@ mod.print_debug = function(dt)
 		mod:createViewport()
 	end
 
-	mod._should_redraw_debug_lines = true
+	mod._should_redraw_debug_lines = d == true
 	local local_player_unit = Managers.player:local_player().player_unit
 	local player_position = Unit.local_position(local_player_unit, 0)
 	mod:echo(player_position)
@@ -91,7 +87,7 @@ mod.print_debug = function(dt)
 	local oldRot = ScriptCamera.rotation(mod.camera)
 	mod:echo(
 		(mod.propsForToggle[mod.currentProp] == "near" and "*" or "") ..
-			"near " .. mod:get("near") .. " " .. mod._current_settings.near
+			"nearsad " .. mod:get("near") .. " " .. mod._current_settings.near
 	)
 
 	mod:echo(
@@ -280,7 +276,12 @@ mod.check_locations = function(dt)
 			return
 		end
 		for setting_key, setting in pairs(location.settings) do
-			new_settings[setting_key] = setting
+			local set_prop = mod._set_props[setting_key]
+			if set_prop then
+				new_settings[setting_key] = set_prop
+			else
+				new_settings[setting_key] = setting
+			end
 		end
 	end
 
@@ -296,7 +297,6 @@ mod.check_locations = function(dt)
 				if inside then
 					-- remember this location
 					new_inside = location.name
-					mod._current_debug_text = "in location " .. location_name
 
 					-- get the settings declared with this location
 					overwrite(location)
@@ -322,7 +322,6 @@ mod.check_location = function(location, point)
 	if location.name == nil then
 		mod:dump(location, "loc", 3)
 	else
-		mod._current_debug_text = "check location " .. location["name"]
 		-- check if player is inside polygon
 		local type = location.check.type
 		if type == "polygon" then
