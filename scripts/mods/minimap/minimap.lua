@@ -26,6 +26,7 @@ mod._printed_debug_text = ""
 mod.camera_positions = {}
 mod.current_camera_index = nil
 
+-- manipulating camera props/settings via chat command or some keybindings (a bit like the photopmod but less ambitious :P)
 mod.increaseProp = function()
 	local prop_key = mod.propsForToggle[mod.currentProp]
 	local old_value = mod._current_settings[prop_key]
@@ -57,29 +58,39 @@ mod.toggleProp = function(propKey)
 	mod.currentProp = 1
 end
 
+-- debug methods (mainly for showing positions, camera settings and all location features (polygons and such))
 mod.print_live = function()
 	local d = mod:get("debug_mode")
 
 	if d then
+		-- show location polygons
+		if mod._debug_lines == nil or mod._should_redraw_debug_lines then
+			mod:echo("redraw")
+			mod._should_redraw_debug_lines = false
+			mod.destroy_debug_lines()
+			mod.create_debug_lines()
+		end
+
+		-- on screen text
 		local local_player_unit = Managers.player:local_player().player_unit
 		local player_position = Unit.local_position(local_player_unit, 0)
 		local w, h = Application.resolution()
 		local pos = Vector3(100, h - 100, 999)
 		pos =
 			mod.ingame_ui:_show_text("pos: " .. player_position.x .. ", " .. player_position.y .. ", " .. player_position.z, pos)
-		if not mod._current_debug_text == nil then
-			pos = mod.ingame_ui:_show_text("debug:" .. mod._current_debug_text)
+		pos = mod.ingame_ui:_show_text("debug: " .. mod._current_debug_text or "", pos)
+		if mod._current_location_inside then
+			pos = mod.ingame_ui:_show_text("location: " .. mod._current_location_inside.name or "", pos)
 		end
 	end
 end
-
 mod.print_debug = function(dt)
 	if not mod.camera then
 		mod:destroyViewport()
 		mod:createViewport()
 	end
 
-	mod._should_redraw_debug_lines = d == true
+	mod._should_redraw_debug_lines = true
 	local local_player_unit = Managers.player:local_player().player_unit
 	local player_position = Unit.local_position(local_player_unit, 0)
 	mod:echo(player_position)
@@ -103,7 +114,6 @@ mod.print_debug = function(dt)
 			"area " .. mod:get("area") .. " " .. mod._current_settings.area
 	)
 end
-
 mod.create_debug_lines = function()
 	local world = mod.world
 	if not world or not Managers.player or not mod._debug_lines == nil then
@@ -160,15 +170,19 @@ mod._create_debug_points = function(z)
 							p_p.y = prev[2]
 							p_p.z = z or prev[3]
 							prev = point
-							if location_name == mod._current_location_inside then
-								LineObject.add_line(mod._debug_lines, Color(255, 255, 0, 0), p_p, c_p)
-								LineObject.add_sphere(mod._debug_lines, Color(255, 255, 0, 0), c_p, 0.05)
-							elseif si == 1 then
+
+							if si == 1 then
 								LineObject.add_line(mod._debug_lines, Color(255, 255, 255, 0), p_p, c_p)
 								LineObject.add_sphere(mod._debug_lines, Color(255, 255, 255, 0), c_p, 0.05)
 							else
 								LineObject.add_line(mod._debug_lines, c, p_p, c_p)
 								LineObject.add_sphere(mod._debug_lines, c, c_p, 0.05)
+							end
+							if mod._current_location_inside then
+								if location_name == mod._current_location_inside.name then
+									LineObject.add_line(mod._debug_lines, Color(255, 255, 0, 0), p_p, c_p)
+									LineObject.add_sphere(mod._debug_lines, Color(255, 255, 0, 0), c_p, 0.05)
+								end
 							end
 						end
 					end
@@ -182,7 +196,6 @@ mod._create_debug_points = function(z)
 
 	paint_all_children(mod._level_settings)
 end
-
 mod.destroy_debug_lines = function()
 	local world = mod.world
 	if not mod._debug_lines or not world then
@@ -190,15 +203,16 @@ mod.destroy_debug_lines = function()
 	end
 	LineObject.reset(mod._debug_lines)
 	LineObject.dispatch(world, mod._debug_lines)
+	mod._debug_lines = nil
 end
 
+-- orthogonal top view as new viewport with own camera settings
 mod._get_viewport_cam = function(viewport_name)
 	local world = mod.world
 	local o_viewport = ScriptWorld.viewport(world, viewport_name)
 
 	return ScriptViewport.camera(o_viewport)
 end
-
 mod.syncCam = function(dt)
 	local local_player_unit = Managers.player:local_player().player_unit
 	local player_position = Unit.local_position(local_player_unit, 0)
@@ -258,13 +272,14 @@ mod.syncCam = function(dt)
 	Viewport.set_rect(mod.viewport, unpack(Viewport.get_data(mod.viewport, "rect")))
 end
 
+-- location checks (so we can apply camera settings based on the position of the player)
 mod.check_locations = function(dt)
 	if not mod._level_settings then
 		return
 	end
 
 	local new_settings = table.clone(mod._current_settings)
-	local new_inside = ""
+	local new_inside = mod._level_settings
 
 	-- player position
 	local local_player_unit = Managers.player:local_player().player_unit
@@ -296,7 +311,7 @@ mod.check_locations = function(dt)
 				local inside = mod.check_location(location, position)
 				if inside then
 					-- remember this location
-					new_inside = location.name
+					new_inside = location
 
 					-- get the settings declared with this location
 					overwrite(location)
@@ -314,7 +329,6 @@ mod.check_locations = function(dt)
 	mod._current_location_inside = new_inside
 	mod._current_settings = new_settings
 end
-
 mod.check_location = function(location, point)
 	if location == nil then
 		return false
@@ -340,7 +354,6 @@ mod.check_location = function(location, point)
 
 	return false
 end
-
 mod.is_point_in_polygon = function(self, point, vertices, pre)
 	if not pre.corners then
 		return false
@@ -368,7 +381,6 @@ mod.is_point_in_polygon = function(self, point, vertices, pre)
 	end
 	return oddNodes
 end
-
 mod._pre_calc = function(location)
 	-- http://alienryderflex.com/polygon/
 	-- only precalc once
@@ -524,23 +536,91 @@ mod._create_minimap_viewport = function(
 	return viewport
 end
 
-mod.toggleMap = function()
-	if mod.active then
-		mod:destroyViewport()
-	else
-		mod:createViewport()
+-- gui (masking the viewport / showing additional stuff like icons -> zaphio ;-)
+-- base methods are taken somehow from LockedAndLoaded - tyvm
+mod.create_gui = function()
+	local top_world = Managers.world:world("top_ingame_view")
+	if top_world then
+		-- Create a screen overla
+		mod.minimap_gui = World.create_screen_gui(top_world, "material", "materials/fonts/gw_fonts", "immediate")
+	end
+end
+mod.destroy_gui = function()
+	local top_world = Managers.world:world("top_ingame_view")
+	if top_world then
+		World.destroy_gui(top_world, mod.minimap_gui)
+		mod.minimap_gui = nil
+	end
+end
+mod:hook(
+	MatchmakingManager,
+	"update",
+	function(func, self, dt, ...)
+		if mod.minimap_gui then
+			mod.render_minimap_mask()
+		end
+		func(self, dt, ...)
+	end
+)
+mod.render_minimap_mask = function()
+	if mod.minimap_gui and mod._current_location_inside then
+		if mod._current_location_inside.mask then
+			mod._current_debug_text = "tri"
+			local triangles = mod._current_location_inside.mask.triangles
+			if triangles then
+				local color = Color(255, 0, 0, 0)
+				if mod:get("debug_mode") then
+					color = Color(120, 120, 255, 120)
+				end
+				for i, triangle in pairs(triangles) do
+					--				mod:dump(triangle, "tri", 2)
+					local p1 = Vector3(triangle[1][1], triangle[1][2], triangle[1][3])
+					local p2 = Vector3(triangle[2][1], triangle[2][2], triangle[2][3])
+					local p3 = Vector3(triangle[3][1], triangle[3][2], triangle[3][3])
+					local mask_p1 = mod._world_to_map(p1)
+					local mask_p2 = mod._world_to_map(p2)
+					local mask_p3 = mod._world_to_map(p3)
+					mod.test_triangle = Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 10, color)
+
+					--		Gui.rect(mod.minimap_gui, Vector3(20, 20, 20), Vector2(30, 30), Color(255, 120, 120, 120))
+
+					-- local font_size = 16
+					-- local font = "gw_arial_16"
+					-- local font_mtrl = "materials/fonts/" .. font
+					-- local x_spacing = 100
+					-- local white_color = Color(255, 255, 255)
+					-- local s_w = RESOLUTION_LOOKUP.res_w
+					-- local s_h = RESOLUTION_LOOKUP.res_h
+					-- Gui.text(mod.minimap_gui, "triangles please", font_mtrl, font_size, font, Vector3(100, 200, 0), white_color)
+					mod._current_debug_text = i
+				end
+			else
+				mod._current_debug_text = "no tris for " .. mod._current_location_inside.name
+			end
+		end
 	end
 end
 
--- got this from DarknessSystem.is_in_darkness_volume
-mod.is_in_volume = function(self, position, volume)
-	local is_inside = false
-
-	if not bottom and not top then
-		Level.is_point_inside_volume(level, "room_volume", volume)
+mod._world_to_map = function(world_position)
+	if mod.camera then
+		return Camera.world_to_screen(mod.camera, world_position)
 	end
-
-	return false
+end
+mod._map_to_world = function(point)
+end
+mod._screen_to_map = function(point)
+end
+mod._map_to_screen = function(point)
+end
+-- user stuff / chat commands and such
+mod.toggleMap = function()
+	if mod.active then
+		mod:destroyViewport()
+		mod:destroy_gui()
+	else
+		mod:createViewport()
+		mod:create_gui()
+	end
 end
 
 mod.setProps = function(key, value)
@@ -674,6 +754,7 @@ end
 mod.on_unload = function(exit_game)
 	if mod.active then
 		mod:destroyViewport()
+		mod.destroy_gui()
 	end
 	return
 end

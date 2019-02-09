@@ -9,6 +9,28 @@ local inn_default = {
     area = 12
 }
 
+local keep_mask = {
+    triangles = {
+        {
+            {
+                -24.247,
+                3.5,
+                6.2
+            },
+            {
+                -13.6,
+                4.6,
+                6.2
+            },
+            {
+                -20.6,
+                10,
+                6.2
+            }
+        }
+    }
+}
+
 local level_data = {
     inn_level = {
         name = "inn_level",
@@ -212,6 +234,7 @@ local level_data = {
                         }
                     }
                 },
+                mask = keep_mask,
                 settings = {
                     near = 15.6,
                     area = 8
@@ -264,17 +287,19 @@ local level_data = {
                                 }
                             }
                         },
+                        mask = keep_mask,
                         settings = {
                             near = 21,
                             color = Color(255, 120, 255, 255)
                         }
                     },
-                    farm_top_of_roof = {
+                    keep_level_1 = {
                         name = "keep_level_1",
                         check = {
                             type = "below",
                             height = 7.6
                         },
+                        mask = keep_mask,
                         settings = {
                             near = 12
                         }
