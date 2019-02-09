@@ -24,6 +24,7 @@ end
 mod._current_settings = mod:_get_default_settings()
 mod._set_props = {}
 mod._current_location_inside = nil
+mod._highlighted_location_inside = nil
 
 mod._current_debug_text = ""
 mod._printed_debug_text = ""
@@ -69,7 +70,9 @@ mod.print_live = function()
 
 	if d then
 		-- show location polygons
-		if mod._debug_lines == nil or mod._should_redraw_debug_lines then
+		local same_location = mod._current_location_inside == mod._highlighted_location_inside
+		if mod._debug_lines == nil or mod._should_redraw_debug_lines or not same_location then
+			mod._highlighted_location_inside = mod._current_location_inside
 			mod._should_redraw_debug_lines = false
 			mod.destroy_debug_lines()
 			mod.create_debug_lines()
