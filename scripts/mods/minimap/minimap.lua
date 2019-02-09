@@ -1,5 +1,9 @@
 local mod = get_mod("minimap")
 
+-- will not use procedural meshes or meshes at all until proper fatshark tools arrive
+-- https://help.autodesk.com/view/Stingray/ENU/?guid=__lua_ref_exa_ex__snippets_proc__meshes_html
+-- local proc_mesh_controller = dofile("scripts/mods/minimap/proc_mesh_controller")
+
 mod.first = false
 mod.viewport = nil
 mod.camera = nil
@@ -16,6 +20,7 @@ mod._get_default_settings = function(self)
 		area = mod:get("area")
 	}
 end
+
 mod._current_settings = mod:_get_default_settings()
 mod._set_props = {}
 mod._current_location_inside = nil
@@ -65,7 +70,6 @@ mod.print_live = function()
 	if d then
 		-- show location polygons
 		if mod._debug_lines == nil or mod._should_redraw_debug_lines then
-			mod:echo("redraw")
 			mod._should_redraw_debug_lines = false
 			mod.destroy_debug_lines()
 			mod.create_debug_lines()
@@ -81,6 +85,15 @@ mod.print_live = function()
 		pos = mod.ingame_ui:_show_text("debug: " .. mod._current_debug_text or "", pos)
 		if mod._current_location_inside then
 			pos = mod.ingame_ui:_show_text("location: " .. mod._current_location_inside.name or "", pos)
+		end
+
+		-- print cursor
+		local c = mod._cursor_text or " "
+		pos = mod.ingame_ui:_show_text("cursor: " .. c, pos)
+		if mod.input_manager then
+			local cursor = Mouse.axis(Mouse.axis_id("cursor"))
+			local world = Camera.screen_to_world(mod.camera, cursor, 10)
+			pos = mod.ingame_ui:_show_text("cursor: " .. world.x .. ", " .. world.y .. ", " .. player_position.z, pos)
 		end
 	end
 end
@@ -334,7 +347,7 @@ mod.check_location = function(location, point)
 		return false
 	end
 	if location.name == nil then
-		mod:dump(location, "loc", 3)
+		-- mod:dump(location, "loc", 3)
 	else
 		-- check if player is inside polygon
 		local type = location.check.type
@@ -541,16 +554,27 @@ end
 mod.create_gui = function()
 	local top_world = Managers.world:world("top_ingame_view")
 	if top_world then
+		--proc_mesh_controller:start()
+		--local sphere_points = proc_mesh_controller.make_sphere_points(300)
+
 		-- Create a screen overla
 		mod.minimap_gui = World.create_screen_gui(top_world, "material", "materials/fonts/gw_fonts", "immediate")
+		local screen_origin = mod._world_to_map(Vector3(0, 0, 0))
+		mod._cam_offset = {
+			x = 0,
+			y = 0
+		}
 	end
+	Window.set_show_cursor(true)
 end
 mod.destroy_gui = function()
 	local top_world = Managers.world:world("top_ingame_view")
 	if top_world then
+		--proc_mesh_controller:shutdown()
 		World.destroy_gui(top_world, mod.minimap_gui)
 		mod.minimap_gui = nil
 	end
+	Window.set_show_cursor(false)
 end
 mod:hook(
 	MatchmakingManager,
@@ -566,6 +590,8 @@ mod.render_minimap_mask = function()
 	if mod.minimap_gui and mod._current_location_inside then
 		if mod._current_location_inside.mask then
 			mod._current_debug_text = "tri"
+
+			-- all this triangle painting could  be way easier with proper procedural mesh generation or the actual mesh import from futur level editor from fatshark
 			local triangles = mod._current_location_inside.mask.triangles
 			if triangles then
 				local color = Color(255, 0, 0, 0)
@@ -573,26 +599,13 @@ mod.render_minimap_mask = function()
 					color = Color(120, 120, 255, 120)
 				end
 				for i, triangle in pairs(triangles) do
-					--				mod:dump(triangle, "tri", 2)
 					local p1 = Vector3(triangle[1][1], triangle[1][2], triangle[1][3])
 					local p2 = Vector3(triangle[2][1], triangle[2][2], triangle[2][3])
 					local p3 = Vector3(triangle[3][1], triangle[3][2], triangle[3][3])
 					local mask_p1 = mod._world_to_map(p1)
 					local mask_p2 = mod._world_to_map(p2)
 					local mask_p3 = mod._world_to_map(p3)
-					mod.test_triangle = Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 10, color)
-
-					--		Gui.rect(mod.minimap_gui, Vector3(20, 20, 20), Vector2(30, 30), Color(255, 120, 120, 120))
-
-					-- local font_size = 16
-					-- local font = "gw_arial_16"
-					-- local font_mtrl = "materials/fonts/" .. font
-					-- local x_spacing = 100
-					-- local white_color = Color(255, 255, 255)
-					-- local s_w = RESOLUTION_LOOKUP.res_w
-					-- local s_h = RESOLUTION_LOOKUP.res_h
-					-- Gui.text(mod.minimap_gui, "triangles please", font_mtrl, font_size, font, Vector3(100, 200, 0), white_color)
-					mod._current_debug_text = i
+					Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 10, color)
 				end
 			else
 				mod._current_debug_text = "no tris for " .. mod._current_location_inside.name
@@ -613,13 +626,33 @@ end
 mod._map_to_screen = function(point)
 end
 -- user stuff / chat commands and such
+mod.register_input = function()
+	local input_manager = Managers.input
+	if input_manager then
+		local player_input = input_manager.input_services.Player
+		mod.input_manager = input_manager
+		mod.player_input = player_input
+		input_manager:device_unblock_all_services("keyboard")
+		input_manager:device_unblock_all_services("mouse")
+	end
+end
+mod.unregister_input = function()
+	local input_manager = mod.input_manager
+	if input_manager then
+		input_manager:device_unblock_all_services("keyboard")
+		input_manager:device_unblock_all_services("mouse")
+	end
+end
+
 mod.toggleMap = function()
 	if mod.active then
 		mod:destroyViewport()
 		mod:destroy_gui()
+		mod:unregister_input()
 	else
 		mod:createViewport()
 		mod:create_gui()
+		mod:register_input()
 	end
 end
 
