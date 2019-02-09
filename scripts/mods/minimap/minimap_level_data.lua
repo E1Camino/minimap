@@ -55,6 +55,59 @@ local level_data = {
                     }
                 }
             },
+            bridge = {
+                name = "bridge",
+                check = {
+                    type = "polygon",
+                    features = {
+                        {
+                            13.446,
+                            6.814,
+                            12
+                        },
+                        {
+                            7.772,
+                            12.532,
+                            12
+                        },
+                        {
+                            17.528,
+                            22.060,
+                            12
+                        },
+                        {
+                            23.668,
+                            16.671,
+                            12
+                        }
+                    }
+                },
+                children = {
+                    under_the_bridge = {
+                        name = "under_the_bridge",
+                        check = {
+                            type = "below",
+                            height = 10
+                        },
+                        settings = {
+                            near = 9
+                        }
+                    },
+                    on_bridge_roof = {
+                        name = "on_bridge_roof",
+                        check = {
+                            type = "above",
+                            height = 15
+                        },
+                        settings = {
+                            near = inn_default.near
+                        }
+                    }
+                },
+                settings = {
+                    near = 15.6
+                }
+            },
             ammo = {
                 name = "ammo",
                 check = {
@@ -160,7 +213,7 @@ local level_data = {
                     }
                 },
                 settings = {
-                    near = 15,
+                    near = 15.6,
                     area = 8
                 },
                 children = {
@@ -212,13 +265,14 @@ local level_data = {
                             }
                         },
                         settings = {
-                            near = 21
+                            near = 21,
+                            color = Color(255, 120, 255, 255)
                         }
                     },
                     farm_top_of_roof = {
                         name = "keep_level_1",
                         check = {
-                            type = "above",
+                            type = "below",
                             height = 7.6
                         },
                         settings = {
