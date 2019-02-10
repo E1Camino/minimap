@@ -20,6 +20,7 @@ mod._get_default_settings = function(self)
 		area = mod:get("area")
 	}
 end
+mod._interactive_mask_mode = false
 
 mod._current_settings = mod:_get_default_settings()
 mod._set_props = {}
@@ -64,6 +65,16 @@ mod.toggleProp = function(propKey)
 	mod.currentProp = 1
 end
 
+-- interactive mask mode where we can add or remove points from current mask
+mod.toggle_mask_mode = function()
+	local d = mod:get("debug_mode")
+	if not d then
+		return
+	end
+	-- toggle mode
+	mod._interactive_mask_mode = not mod._interactive_mask_mode
+end
+
 -- debug methods (mainly for showing positions, camera settings and all location features (polygons and such))
 mod.print_live = function()
 	local d = mod:get("debug_mode")
@@ -97,11 +108,21 @@ mod.print_live = function()
 			pos = mod.ingame_ui:_show_text("cursor: " .. world.x .. ", " .. world.y .. ", " .. player_position.z, pos)
 		end
 
-		-- test disabling fog
-		local shading_env = World.get_data(mod.world, "shading_environment")
-		ShadingEnvironment.set_scalar(shading_env, "fog_enabled", 0)
-		ShadingEnvironment.apply(shading_env)
+		-- print if interactive debug mode
+		if mod._interactive_mask_mode then
+			pos = mod.ingame_ui:_show_text("mask_mode", pos)
+		end
 	end
+	-- test disabling fog
+	local shading_env = World.get_data(mod.world, "shading_environment")
+	ShadingEnvironment.set_scalar(shading_env, "fog_enabled", 0)
+	ShadingEnvironment.set_scalar(shading_env, "dof_enabled", 0)
+	ShadingEnvironment.set_scalar(shading_env, "motion_bur_enabled", 0)
+	ShadingEnvironment.set_scalar(shading_env, "outline_enabled", 0)
+	--		ShadingEnvironment.set_scalar(shading_env, "sun_shadows_enabled", 0)
+	ShadingEnvironment.set_scalar(shading_env, "ssm_enabled", 1)
+	ShadingEnvironment.set_scalar(shading_env, "ssm_constant_update_enabled", 1)
+	ShadingEnvironment.apply(shading_env)
 end
 mod.print_debug = function(dt)
 	if not mod.camera then
@@ -145,17 +166,6 @@ mod.create_debug_lines = function()
 	end
 	mod._debug_lines = World.create_line_object(world, true)
 
-	-- player sphere
-	local local_player_unit = Managers.player:local_player().player_unit
-	local player_position = Unit.local_position(local_player_unit, 0)
-	local z = player_position.z
-	player_position.z = player_position.z + 2
-	LineObject.add_sphere(mod._debug_lines, Color(255, 255, 255, 255), player_position, 0.05)
-
-	-- player axes
-	local player_pose = Unit.local_pose(local_player_unit, 0)
-	LineObject.add_axes(mod._debug_lines, player_pose, 1)
-
 	-- paint level setting locations
 	mod._create_debug_points()
 	LineObject.dispatch(world, mod._debug_lines)
@@ -178,7 +188,7 @@ mod._create_debug_points = function(z)
 					end
 					-- highlight location that we are inside
 					-- check if camera is inside location
-					local points = location.check.features
+					local points = location.check.featgures
 					if points then
 						local pre = mod._pre_calc(location)
 						local prev = points[#points]
@@ -637,6 +647,13 @@ end
 mod._map_to_screen = function(point)
 end
 -- user stuff / chat commands and such
+mod.check_input = function()
+	if mod._interactive_mask_mode then
+		if Mouse.pressed("left") then
+			mod:echo("left")
+		end
+	end
+end
 mod.register_input = function()
 	local input_manager = Managers.input
 	if input_manager then
@@ -793,6 +810,7 @@ mod.update = function(dt)
 	mod:syncCam(dt)
 	mod:check_locations(dt)
 	mod.print_live()
+	mod.check_input()
 end
 
 mod.on_unload = function(exit_game)

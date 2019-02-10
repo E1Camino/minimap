@@ -7,102 +7,162 @@ return {
 	is_togglable = true, -- If the mod can be enabled/disabled
 	is_mutator = false, -- If the mod is mutator
 	mutator_settings = {}, -- Extra settings, if it's mutator
-	options_widgets = {
-		-- Widget settings for the mod options menu
-		{
-			setting_name = "open_minimap_view",
-			widget_type = "keybind",
-			text = "toggle minimap",
-			default_value = {},
-			action = "toggleMap"
-		},
-		{
-			setting_name = "debug_mode",
-			widget_type = "checkbox",
-			text = "debug mode",
-			default_value = false
-		},
-		{
-			setting_name = "toggleProps",
-			widget_type = "keybind",
-			text = "toggle which prop should be manipulated with keybindings",
-			default_value = {},
-			action = "toggleProp"
-		},
-		{
-			setting_name = "debug",
-			widget_type = "keybind",
-			text = "print some debug stuff into the chat",
-			default_value = {},
-			action = "print_debug"
-		},
-		{
-			setting_name = "offsetplus",
-			widget_type = "keybind",
-			text = "increase offset",
-			default_value = {},
-			action = "increaseProp"
-		},
-		{
-			setting_name = "offsetminus",
-			widget_type = "keybind",
-			text = "decrease offset",
-			default_value = {},
-			action = "decreaseProp"
-		},
-		{
-			setting_name = "offsetspeedPlus",
-			widget_type = "keybind",
-			text = "increase speed for offset changes",
-			default_value = {},
-			action = "increasePropSpeed"
-		},
-		{
-			setting_name = "offsetspeedMinus",
-			widget_type = "keybind",
-			text = "decrease speed for offset changes",
-			default_value = {},
-			action = "decreasePropSpeed"
-		},
-		{
-			setting_name = "near",
-			widget_type = "numeric",
-			text = "near",
-			unit_text = "",
-			range = {0, 100000},
-			default_value = 12000
-		},
-		{
-			setting_name = "far",
-			widget_type = "numeric",
-			text = "far",
-			unit_text = "",
-			range = {0, 5000},
-			default_value = 1000
-		},
-		{
-			setting_name = "area",
-			widget_type = "numeric",
-			text = "half the size of the area that should be rendered in the map",
-			unit_text = "",
-			range = {1, 100},
-			default_value = 10
-		},
-		{
-			setting_name = "size",
-			widget_type = "numeric",
-			text = "size of the map widget",
-			unit_text = "%",
-			range = {1, 100},
-			default_value = 0.4
-		},
-		{
-			setting_name = "height",
-			widget_type = "numeric",
-			text = "camera height",
-			unit_text = "",
-			range = {40, 200},
-			default_value = 90
+	options = {
+		widgets = {
+			-- Widget settings for the mod options menu
+			{
+				setting_id = "open_minimap_view",
+				type = "keybind",
+				keybind_trigger = "pressed", -- "held" when ready
+				keybind_type = "function_call",
+				function_name = "toggleMap",
+				default_value = {}
+			},
+			{
+				setting_id = "debug_mode",
+				type = "checkbox",
+				text = "debug mode",
+				default_value = false
+			},
+			{
+				setting_id = "mask_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "maskMode",
+						type = "keybind",
+						keybind_trigger = "pressed",
+						keybind_type = "function_call",
+						function_name = "toggle_mask_mode",
+						text = "toggle interactive mask mode",
+						default_value = {}
+					},
+					{
+						setting_id = "add_point",
+						type = "keybind",
+						keybind_trigger = "pressed",
+						keybind_type = "function_call",
+						function_name = "add_point",
+						text = "add point to current mask",
+						default_value = {}
+					},
+					{
+						setting_id = "remove_point",
+						type = "keybind",
+						keybind_trigger = "pressed",
+						keybind_type = "function_call",
+						function_name = "remove_point",
+						text = "remove point from current mask",
+						default_value = {}
+					}
+				}
+			},
+			{
+				setting_id = "keys_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "debug",
+						type = "keybind",
+						keybind_trigger = "pressed",
+						keybind_type = "function_call",
+						function_name = "print_debug",
+						text = "print some debug stuff into the chat",
+						default_value = {}
+					},
+					{
+						setting_id = "toggleProps",
+						type = "keybind",
+						keybind_trigger = "pressed",
+						keybind_type = "function_call",
+						function_name = "toggleProp",
+						text = "toggle which prop should be manipulated with keybindings",
+						default_value = {}
+					},
+					{
+						setting_id = "offsetplus",
+						type = "keybind",
+						keybind_trigger = "pressed",
+						keybind_type = "function_call",
+						function_name = "increaseProp",
+						text = "increase offset",
+						default_value = {}
+					},
+					{
+						setting_id = "offsetminus",
+						type = "keybind",
+						keybind_trigger = "pressed",
+						keybind_type = "function_call",
+						function_name = "decreaseProp",
+						text = "decrease offset",
+						default_value = {}
+					},
+					{
+						setting_id = "offsetspeedPlus",
+						type = "keybind",
+						keybind_trigger = "pressed",
+						keybind_type = "function_call",
+						function_name = "increasePropSpeed",
+						text = "increase speed for offset changes",
+						default_value = {}
+					},
+					{
+						setting_id = "offsetspeedMinus",
+						type = "keybind",
+						keybind_trigger = "pressed",
+						keybind_type = "function_call",
+						function_name = "decreasePropSpeed",
+						text = "decrease speed for offset changes",
+						default_value = {}
+					}
+				}
+			},
+			{
+				setting_id = "map_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "near",
+						type = "numeric",
+						text = "near",
+						unit_text = "",
+						range = {0, 100000},
+						default_value = 12000
+					},
+					{
+						setting_id = "far",
+						type = "numeric",
+						text = "far",
+						unit_text = "",
+						range = {0, 5000},
+						default_value = 1000
+					},
+					{
+						setting_id = "area",
+						type = "numeric",
+						text = "half the size of the area that should be rendered in the map",
+						unit_text = "",
+						range = {1, 100},
+						default_value = 10
+					},
+					{
+						setting_id = "size",
+						type = "numeric",
+						text = "size of the map widget",
+						unit_text = "%",
+						range = {1, 100},
+						default_value = 40
+					},
+					{
+						setting_id = "height",
+						type = "numeric",
+						text = "camera height",
+						unit_text = "",
+						range = {40, 200},
+						default_value = 90
+					}
+				}
+			}
 		}
 	}
 }

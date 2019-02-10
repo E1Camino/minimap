@@ -8,7 +8,13 @@ return {
 	example_checkbox_option_tooltip = {
 		en = "Example Checkbox Option description."
 	},
---[[
+	open_minimap_view = {
+		en = "Toggle map"
+	},
+	open_minimap_view_description = {
+		en = "Toggle between first person and map view "
+	}
+	--[[
 	some_other_text_id = {
 		en = "Translation",        -- English
 		fr = "Translation",        -- French
