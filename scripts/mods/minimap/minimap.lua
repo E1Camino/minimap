@@ -91,13 +91,16 @@ mod.print_live = function()
 		end
 
 		-- print cursor
-		local c = mod._cursor_text or " "
-		pos = mod.ingame_ui:_show_text("cursor: " .. c, pos)
 		if mod.input_manager then
 			local cursor = Mouse.axis(Mouse.axis_id("cursor"))
 			local world = Camera.screen_to_world(mod.camera, cursor, 10)
 			pos = mod.ingame_ui:_show_text("cursor: " .. world.x .. ", " .. world.y .. ", " .. player_position.z, pos)
 		end
+
+		-- test disabling fog
+		local shading_env = World.get_data(mod.world, "shading_environment")
+		ShadingEnvironment.set_scalar(shading_env, "fog_enabled", 0)
+		ShadingEnvironment.apply(shading_env)
 	end
 end
 mod.print_debug = function(dt)
@@ -129,6 +132,11 @@ mod.print_debug = function(dt)
 		(mod.propsForToggle[mod.currentProp] == "area" and "*" or "") ..
 			"area " .. mod:get("area") .. " " .. mod._current_settings.area
 	)
+
+	local shading_env = World.get_data(mod.world, "shading_environment")
+	local fog = ShadingEnvironment.scalar(shading_env, ("dense_fog"))
+	local fog_enabled = ShadingEnvironment.scalar(shading_env, ("fog_enabled"))
+	mod._current_debug_text = "fog enabled " .. fog_enabled
 end
 mod.create_debug_lines = function()
 	local world = mod.world
