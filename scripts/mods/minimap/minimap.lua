@@ -115,18 +115,18 @@ mod.print_live = function()
 	if d then
 		-- show location polygons
 		local same_location = mod._current_location_inside == mod._highlighted_location_inside
-		if mod._debug_lines == nil or mod._should_redraw_debug_lines or not same_location then
-			mod._highlighted_location_inside = mod._current_location_inside
-			mod._should_redraw_debug_lines = false
-			mod.destroy_debug_lines()
-			mod.create_debug_lines()
-		end
+		--if mod._debug_lines == nil or mod._should_redraw_debug_lines or not same_location then
+		mod._highlighted_location_inside = mod._current_location_inside
+		mod._should_redraw_debug_lines = false
+		mod.destroy_debug_lines()
+		mod.create_debug_lines()
+		--end
 
 		-- on screen text
 		local local_player_unit = Managers.player:local_player().player_unit
 		local player_position = Unit.local_position(local_player_unit, 0)
 		local w, h = Application.resolution()
-		local pos = Vector3(100, h - 100, 999)
+		local pos = Vector3(20, h - 25, 5)
 		if mod._level_key then
 			pos = mod.ingame_ui:_show_text("level: " .. mod._level_key, pos)
 		end
@@ -147,6 +147,17 @@ mod.print_live = function()
 		-- print if interactive debug mode
 		if mod._interactive_mask_mode then
 			pos = mod.ingame_ui:_show_text("mask_mode", pos)
+		end
+
+		-- debug stuff about painted mask triangles
+		local loc = mod._current_location_inside
+		if loc then
+			if loc.mask then
+				local point = loc.mask.triangles[1][1]
+				local p = Vector2(point[1], point[2])
+				local world = Camera.screen_to_world(mod.camera, p, 10)
+				pos = mod.ingame_ui:_show_text("cursor: " .. world.x .. ", " .. world.y .. ", " .. player_position.z, pos)
+			end
 		end
 	end
 	-- test disabling fog
@@ -554,7 +565,7 @@ mod._get_level_settings = function(self)
 	local level_transition_handler = Managers.state.game_mode.level_transition_handler
 	local level_key = level_transition_handler:get_current_level_keys()
 	mod._level_key = level_key
-	mod.echo(level_key)
+	mod:echo(level_key)
 	return dofile("scripts/mods/minimap/minimap_level_data")[level_key]
 end
 
@@ -649,7 +660,7 @@ mod.create_gui = function()
 		--local sphere_points = proc_mesh_controller.make_sphere_points(300)
 
 		-- Create a screen overla
-		mod.minimap_gui = World.create_screen_gui(top_world, "material", "materials/fonts/gw_fonts", "immediate")
+		mod.minimap_gui = World.create_screen_gui(top_world, "immediate")
 		local screen_origin = mod._world_to_map(Vector3(0, 0, 0))
 		mod._cam_offset = {
 			x = 0,
@@ -671,13 +682,6 @@ mod:hook(
 	MatchmakingManager,
 	"update",
 	function(func, self, dt, ...)
-		if mod.minimap_gui and mod.active then
-			if mod._interactive_mask_mode then
-				mod.render_interactive_mask()
-			else
-				mod.render_minimap_mask()
-			end
-		end
 		func(self, dt, ...)
 	end
 )
@@ -741,9 +745,7 @@ mod._render_mask_triangle = function(triangle, alpha)
 	end
 end
 mod._world_to_map = function(world_position)
-	if mod.camera then
-		return Camera.world_to_screen(mod.camera, world_position)
-	end
+	return Camera.world_to_screen(mod.camera, world_position)
 end
 mod._map_to_world = function(point)
 end
@@ -851,31 +853,31 @@ mod:hook_safe(
 		mod:echo("init overcharge bar")
 	end
 )
-mod:hook_safe(
+mod:hook(
 	WorldManager,
 	"create_world",
-	function(self, name, shading_environment, shading_callback, layer, ...)
-		-- load proper level settings
-		if mod.is_active then
-			local s = mod:_get_level_settings()
-			mod._level_settings = s
-			mod:echo("c name:" .. name)
+	function(func, self, name, shading_environment, shading_callback, layer, ...)
+		-- every time a level world is created we want to reload level settings
+		if mod.is_active and name == "level_world" then
+			mod._level_settings = mod:_get_level_settings()
 		end
+		return func(self, name, shading_environment, shading_callback, layer, ...)
 	end
 )
 mod:hook(
 	WorldManager,
 	"destroy_world",
 	function(func, self, world_or_name)
-		local name = nil
+		if world_or_name then
+			local name = nil
 
-		if type(world_or_name) == "string" then
-			name = world_or_name
-		else
-			name = World.get_data(world_or_name, "name")
+			if type(world_or_name) == "string" then
+				name = world_or_name
+			else
+				name = World.get_data(world_or_name, "name")
+			end
+			mod.destroy_minimap()
 		end
-		mod:echo("d name:" .. name)
-		mod.destroy_minimap()
 		return func(self, world_or_name)
 	end
 )
@@ -936,8 +938,19 @@ mod.update = function(dt)
 		return
 	end
 
+	if not mod._level_settings then
+		mod._level_settings = mod:_get_level_settings()
+	end
 	mod:syncCam(dt)
 	mod:check_locations(dt)
+	if mod.minimap_gui and mod.active then
+		if mod:get("debug_mode") then
+			if mod._interactive_mask_mode then
+				mod.render_interactive_mask()
+			end
+		end
+		mod.render_minimap_mask()
+	end
 	mod.print_live()
 end
 
