@@ -32,6 +32,8 @@ mod._printed_debug_text = ""
 
 mod.camera_positions = {}
 mod.current_camera_index = nil
+mod._new_triangles = {}
+mod._new_triangle = {}
 
 -- manipulating camera props/settings via chat command or some keybindings (a bit like the photopmod but less ambitious :P)
 mod.increaseProp = function()
@@ -74,7 +76,38 @@ mod.toggle_mask_mode = function()
 	-- toggle mode
 	mod._interactive_mask_mode = not mod._interactive_mask_mode
 end
+mod.add_point = function()
+	if not mod._interactive_mask_mode then
+		return
+	end
+	if mod.input_manager then
+		local cursor = Mouse.axis(Mouse.axis_id("cursor"))
+		local world = Camera.screen_to_world(mod.camera, cursor, 10)
 
+		-- round stuff so we have kind of a snap function :D
+		local point = {
+			tonumber(string.format("%.2f", world.x)),
+			tonumber(string.format("%.2f", world.y)),
+			tonumber(string.format("%.2f", mod._current_settings.near))
+		}
+		table.insert(mod._new_triangle, point)
+
+		if #mod._new_triangle == 3 then
+			local t = table.clone(mod._new_triangle)
+			table.insert(mod._new_triangles, t)
+			mod._new_triangle = {}
+		end
+	end
+end
+mod.remove_point = function()
+	if not mod._interactive_mask_mode then
+		return
+	end
+	if #mod._new_triangle > 1 then
+		local tri = mod._new_triangle
+		mod._new_triangle[#mod._new_triangle] = nil
+	end
+end
 -- debug methods (mainly for showing positions, camera settings and all location features (polygons and such))
 mod.print_live = function()
 	local d = mod:get("debug_mode")
@@ -94,6 +127,9 @@ mod.print_live = function()
 		local player_position = Unit.local_position(local_player_unit, 0)
 		local w, h = Application.resolution()
 		local pos = Vector3(100, h - 100, 999)
+		if mod._level_key then
+			pos = mod.ingame_ui:_show_text("level: " .. mod._level_key, pos)
+		end
 		pos =
 			mod.ingame_ui:_show_text("pos: " .. player_position.x .. ", " .. player_position.y .. ", " .. player_position.z, pos)
 		pos = mod.ingame_ui:_show_text("debug: " .. mod._current_debug_text or "", pos)
@@ -126,8 +162,8 @@ mod.print_live = function()
 end
 mod.print_debug = function(dt)
 	if not mod.camera then
-		mod:destroyViewport()
-		mod:createViewport()
+		mod:destroy_minimap()
+		mod:create_minimap()
 	end
 
 	mod._should_redraw_debug_lines = true
@@ -138,7 +174,7 @@ mod.print_debug = function(dt)
 	local oldRot = ScriptCamera.rotation(mod.camera)
 	mod:echo(
 		(mod.propsForToggle[mod.currentProp] == "near" and "*" or "") ..
-			"nearsad " .. mod:get("near") .. " " .. mod._current_settings.near
+			"near " .. mod:get("near") .. " " .. mod._current_settings.near
 	)
 
 	mod:echo(
@@ -158,6 +194,34 @@ mod.print_debug = function(dt)
 	local fog = ShadingEnvironment.scalar(shading_env, ("dense_fog"))
 	local fog_enabled = ShadingEnvironment.scalar(shading_env, ("fog_enabled"))
 	mod._current_debug_text = "fog enabled " .. fog_enabled
+
+	mod:dump(mod._new_triangle, "new triangle", 2)
+
+	local addString = function(stack, s)
+		table.insert(stack, s) -- push 's' into the the stack
+		for i = table.getn(stack) - 1, 1, -1 do
+			if string.len(stack[i]) > string.len(stack[i + 1]) then
+				break
+			end
+			stack[i] = stack[i] .. table.remove(stack)
+		end
+	end
+	local s = "" -- starts with an empty string
+	s = s .. "triangles = {\n"
+	for l, triangle in pairs(mod._new_triangles) do
+		s = s .. "{\n"
+		for j, point in pairs(triangle) do
+			s = s .. "{\n"
+			s = s .. "" .. point[1] .. ",\n"
+			s = s .. "" .. point[2] .. ",\n"
+			s = s .. "" .. point[3] .. ",\n"
+			s = s .. "},\n"
+		end
+		s = s .. "},\n"
+	end
+	s = s .. "}\n"
+	-- warn so we can dump it into the log file and copy paste it into our level settings
+	mod:warning(s)
 end
 mod.create_debug_lines = function()
 	local world = mod.world
@@ -193,7 +257,7 @@ mod._create_debug_points = function(z)
 						local pre = mod._pre_calc(location)
 						local prev = points[#points]
 
-						--polygon point iterationw
+						--polygon point iteration
 						for si, point in pairs(points) do
 							local c_p = Vector3.zero()
 							c_p.x = point[1]
@@ -489,10 +553,12 @@ end
 mod._get_level_settings = function(self)
 	local level_transition_handler = Managers.state.game_mode.level_transition_handler
 	local level_key = level_transition_handler:get_current_level_keys()
+	mod._level_key = level_key
+	mod.echo(level_key)
 	return dofile("scripts/mods/minimap/minimap_level_data")[level_key]
 end
 
-mod.createViewport = function()
+mod.create_viewport = function()
 	local world = Managers.world:world("level_world")
 	mod.world = world
 	mod.viewport = mod._create_minimap_viewport(world, "minimap", "default", 2)
@@ -500,14 +566,18 @@ mod.createViewport = function()
 	mod.active = true
 end
 
-mod.destroyViewport = function()
-	mod.destroy_debug_lines()
-	local world = mod.world
-	ScriptWorld.destroy_viewport(world, "minimap")
-	mod.viewport = nil
-	mod.camera = nil
-	mod.active = false
-	mod._character_offset = 0
+mod.destroy_viewport = function()
+	if mod.camera then
+		mod.destroy_debug_lines()
+		local world = mod.world
+		if world then
+			ScriptWorld.destroy_viewport(world, "minimap")
+		end
+		mod.viewport = nil
+		mod.camera = nil
+		mod.active = false
+		mod._character_offset = 0
+	end
 end
 
 mod._create_minimap_viewport = function(
@@ -590,7 +660,7 @@ mod.create_gui = function()
 end
 mod.destroy_gui = function()
 	local top_world = Managers.world:world("top_ingame_view")
-	if top_world then
+	if top_world and mod.minima_gui then
 		--proc_mesh_controller:shutdown()
 		World.destroy_gui(top_world, mod.minimap_gui)
 		mod.minimap_gui = nil
@@ -601,8 +671,12 @@ mod:hook(
 	MatchmakingManager,
 	"update",
 	function(func, self, dt, ...)
-		if mod.minimap_gui then
-			mod.render_minimap_mask()
+		if mod.minimap_gui and mod.active then
+			if mod._interactive_mask_mode then
+				mod.render_interactive_mask()
+			else
+				mod.render_minimap_mask()
+			end
 		end
 		func(self, dt, ...)
 	end
@@ -615,18 +689,9 @@ mod.render_minimap_mask = function()
 			-- all this triangle painting could  be way easier with proper procedural mesh generation or the actual mesh import from futur level editor from fatshark
 			local triangles = mod._current_location_inside.mask.triangles
 			if triangles then
-				local color = Color(255, 0, 0, 0)
-				if mod:get("debug_mode") then
-					color = Color(120, 120, 255, 120)
-				end
+				local a = 255
 				for i, triangle in pairs(triangles) do
-					local p1 = Vector3(triangle[1][1], triangle[1][2], triangle[1][3])
-					local p2 = Vector3(triangle[2][1], triangle[2][2], triangle[2][3])
-					local p3 = Vector3(triangle[3][1], triangle[3][2], triangle[3][3])
-					local mask_p1 = mod._world_to_map(p1)
-					local mask_p2 = mod._world_to_map(p2)
-					local mask_p3 = mod._world_to_map(p3)
-					Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 10, color)
+					mod._render_mask_triangle(triangle, a)
 				end
 			else
 				mod._current_debug_text = "no tris for " .. mod._current_location_inside.name
@@ -634,7 +699,47 @@ mod.render_minimap_mask = function()
 		end
 	end
 end
+mod.render_interactive_mask = function()
+	if mod.minimap_gui and mod._interactive_mask_mode then
+		-- all this triangle painting could  be way easier with proper procedural mesh generation or the actual mesh import from futur level editor from fatshark
 
+		local triangles = mod._new_triangles
+		if triangles then
+			for i, triangle in pairs(triangles) do
+				mod._render_mask_triangle(triangle, 150)
+			end
+		end
+		local unfinished_triangle = mod._new_triangle
+		if #mod._new_triangle == 2 then
+			local preview_triangle = table.clone(mod._new_triangle)
+			local cursor = Mouse.axis(Mouse.axis_id("cursor"))
+			local world = Camera.screen_to_world(mod.camera, cursor, 10)
+
+			-- round stuff so we have kind of a snap function :D
+			local preview_point = {
+				tonumber(string.format("%.2f", world.x)),
+				tonumber(string.format("%.2f", world.y)),
+				tonumber(string.format("%.2f", mod._current_settings.near))
+			}
+			table.insert(preview_triangle, preview_point)
+			mod._render_mask_triangle(preview_triangle, 150)
+		end
+	end
+end
+mod._render_mask_triangle = function(triangle, alpha)
+	local color = Color(alpha, 10, 10, 10)
+	if mod.minimap_gui then
+		local p1 = Vector3(triangle[1][1], triangle[1][2], triangle[1][3])
+		local p2 = Vector3(triangle[2][1], triangle[2][2], triangle[2][3])
+		local p3 = Vector3(triangle[3][1], triangle[3][2], triangle[3][3])
+		local mask_p1 = mod._world_to_map(p1)
+		local mask_p2 = mod._world_to_map(p2)
+		local mask_p3 = mod._world_to_map(p3)
+		--if mask_p1 and mask_p2 and mask_p3 then
+		Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 10, color)
+	--end
+	end
+end
 mod._world_to_map = function(world_position)
 	if mod.camera then
 		return Camera.world_to_screen(mod.camera, world_position)
@@ -647,13 +752,6 @@ end
 mod._map_to_screen = function(point)
 end
 -- user stuff / chat commands and such
-mod.check_input = function()
-	if mod._interactive_mask_mode then
-		if Mouse.pressed("left") then
-			mod:echo("left")
-		end
-	end
-end
 mod.register_input = function()
 	local input_manager = Managers.input
 	if input_manager then
@@ -672,15 +770,21 @@ mod.unregister_input = function()
 	end
 end
 
+mod.create_minimap = function()
+	mod:create_viewport()
+	mod:create_gui()
+	mod:register_input()
+end
+mod.destroy_minimap = function()
+	mod:destroy_viewport()
+	mod:destroy_gui()
+	mod:unregister_input()
+end
 mod.toggleMap = function()
 	if mod.active then
-		mod:destroyViewport()
-		mod:destroy_gui()
-		mod:unregister_input()
+		mod.destroy_minimap()
 	else
-		mod:createViewport()
-		mod:create_gui()
-		mod:register_input()
+		mod.create_minimap()
 	end
 end
 
@@ -748,6 +852,34 @@ mod:hook_safe(
 	end
 )
 mod:hook_safe(
+	WorldManager,
+	"create_world",
+	function(self, name, shading_environment, shading_callback, layer, ...)
+		-- load proper level settings
+		if mod.is_active then
+			local s = mod:_get_level_settings()
+			mod._level_settings = s
+			mod:echo("c name:" .. name)
+		end
+	end
+)
+mod:hook(
+	WorldManager,
+	"destroy_world",
+	function(func, self, world_or_name)
+		local name = nil
+
+		if type(world_or_name) == "string" then
+			name = world_or_name
+		else
+			name = World.get_data(world_or_name, "name")
+		end
+		mod:echo("d name:" .. name)
+		mod.destroy_minimap()
+		return func(self, world_or_name)
+	end
+)
+mod:hook_safe(
 	CameraSystem,
 	"update",
 	function(self, context)
@@ -804,19 +936,14 @@ mod.update = function(dt)
 		return
 	end
 
-	local s = mod:_get_level_settings()
-	mod._level_settings = s
-
 	mod:syncCam(dt)
 	mod:check_locations(dt)
 	mod.print_live()
-	mod.check_input()
 end
 
 mod.on_unload = function(exit_game)
 	if mod.active then
-		mod:destroyViewport()
-		mod.destroy_gui()
+		mod:destroy_minimap()
 	end
 	return
 end
@@ -837,6 +964,6 @@ end
 
 mod.on_disabled = function(is_first_call)
 	if mod.active then
-		mod:destroyViewport()
+		mod:destroy_minimap()
 	end
 end
