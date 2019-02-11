@@ -19,6 +19,14 @@ return {
 				default_value = {}
 			},
 			{
+				setting_id = "toggle_debug_mode",
+				type = "keybind",
+				keybind_trigger = "pressed", -- "held" when ready
+				keybind_type = "function_call",
+				function_name = "toggle_debug_mode",
+				default_value = {}
+			},
+			{
 				setting_id = "debug_mode",
 				type = "checkbox",
 				text = "debug mode",
@@ -44,6 +52,24 @@ return {
 						keybind_type = "function_call",
 						function_name = "add_point",
 						text = "add point to current mask",
+						default_value = {}
+					},
+					{
+						setting_id = "add_last_point",
+						type = "keybind",
+						keybind_trigger = "pressed",
+						keybind_type = "function_call",
+						function_name = "add_last_point",
+						text = "add last point to current mask triangle strip",
+						default_value = {}
+					},
+					{
+						setting_id = "toggle_single_triangle_mode",
+						type = "keybind",
+						keybind_trigger = "pressed",
+						keybind_type = "function_call",
+						function_name = "toggle_interactive_triangle_mode",
+						text = "toggle between single and multi triangle mode",
 						default_value = {}
 					},
 					{

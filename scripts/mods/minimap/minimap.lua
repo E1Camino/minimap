@@ -21,6 +21,7 @@ mod._get_default_settings = function(self)
 	}
 end
 mod._interactive_mask_mode = false
+mod._interactive_mask_multi_triangle = false
 
 mod._current_settings = mod:_get_default_settings()
 mod._set_props = {}
@@ -32,8 +33,10 @@ mod._printed_debug_text = ""
 
 mod.camera_positions = {}
 mod.current_camera_index = nil
+mod._mask_triangles = {}
 mod._new_triangles = {}
 mod._new_triangle = {}
+mod._ref_point = nil
 
 -- manipulating camera props/settings via chat command or some keybindings (a bit like the photopmod but less ambitious :P)
 mod.increaseProp = function()
@@ -67,6 +70,11 @@ mod.toggleProp = function(propKey)
 	mod.currentProp = 1
 end
 
+mod.toggle_debug_mode = function()
+	local d = mod:get("debug_mode")
+	mod:set("debug_mode", not d)
+end
+
 -- interactive mask mode where we can add or remove points from current mask
 mod.toggle_mask_mode = function()
 	local d = mod:get("debug_mode")
@@ -76,7 +84,14 @@ mod.toggle_mask_mode = function()
 	-- toggle mode
 	mod._interactive_mask_mode = not mod._interactive_mask_mode
 end
-mod.add_point = function()
+mod.toggle_interactive_triangle_mode = function()
+	mod._interactive_mask_multi_triangle = not mod._interactive_mask_multi_triangle
+end
+mod.add_point = function(self, use_ref)
+	if use_ref then
+		mod:echo(use_ref)
+		mod:echo("add" .. (not use_ref == nil and " t "))
+	end
 	if not mod._interactive_mask_mode then
 		return
 	end
@@ -90,14 +105,47 @@ mod.add_point = function()
 			tonumber(string.format("%.2f", world.y)),
 			tonumber(string.format("%.2f", mod._current_settings.near))
 		}
+		if use_ref and mod._ref_point then
+			point = mod._ref_point
+			mod._ref_point = nil
+		end
 		table.insert(mod._new_triangle, point)
 
-		if #mod._new_triangle == 3 then
-			local t = table.clone(mod._new_triangle)
-			table.insert(mod._new_triangles, t)
-			mod._new_triangle = {}
+		-- safe the second point of the first triangle for reference
+		if #mod._new_triangle == 2 and not mod._ref_point then
+			mod._ref_point = point
 		end
+		mod._move_points_to_triangle()
 	end
+end
+mod._move_points_to_triangle = function()
+	if #mod._new_triangle == 3 then
+		local t = table.clone(mod._new_triangle)
+		table.insert(mod._new_triangles, t)
+
+		-- reset the new triangle
+		local new_triangle = {}
+		if mod._interactive_mask_multi_triangle then
+			-- take the first point (shared corner of all triangles in the multi mode (e.g. corner of screen))
+			table.insert(new_triangle, mod._new_triangle[1])
+			-- take the last point of old (so new triangle will be modelled next to the last edge of old triangle)
+			table.insert(new_triangle, mod._new_triangle[3])
+		end
+		mod._new_triangle = new_triangle
+	end
+end
+mod._move_triangles_to_triangle_strip = function()
+	mod._mask_triangles = mod._new_triangles
+	mod._new_triangles = {}
+end
+mod.add_last_point = function()
+	if not mod._interactive_mask_multi_triangle or not mod._ref_point then
+		return
+	end
+	table.insert(mod._new_triangle, mod._ref_point)
+	mod._move_points_to_triangle()
+	mod._move_triangles_to_triangle_strip()
+	mod._ref_point = nil
 end
 mod.remove_point = function()
 	if not mod._interactive_mask_mode then
@@ -112,15 +160,15 @@ end
 mod.print_live = function()
 	local d = mod:get("debug_mode")
 
-	if false then
+	if d then
 		-- show location polygons
 		local same_location = mod._current_location_inside == mod._highlighted_location_inside
-		--if mod._debug_lines == nil or mod._should_redraw_debug_lines or not same_location then
-		mod._highlighted_location_inside = mod._current_location_inside
-		mod._should_redraw_debug_lines = false
-		mod.destroy_debug_lines()
-		mod.create_debug_lines()
-		--end
+		if mod._debug_lines == nil or mod._should_redraw_debug_lines or not same_location then
+			mod._highlighted_location_inside = mod._current_location_inside
+			mod._should_redraw_debug_lines = false
+			mod.destroy_debug_lines()
+			mod.create_debug_lines()
+		end
 
 		-- on screen text
 		local local_player_unit = Managers.player:local_player().player_unit
@@ -146,7 +194,11 @@ mod.print_live = function()
 
 		-- print if interactive debug mode
 		if mod._interactive_mask_mode then
-			pos = mod.ingame_ui:_show_text("mask_mode", pos)
+			local t_mode = "single"
+			if mod._interactive_mask_multi_triangle then
+				t_mode = "mulit"
+			end
+			pos = mod.ingame_ui:_show_text("mask_mode - " .. t_mode, pos)
 		end
 
 		-- debug stuff about painted mask triangles
@@ -159,6 +211,8 @@ mod.print_live = function()
 				pos = mod.ingame_ui:_show_text("cursor: " .. world.x .. ", " .. world.y .. ", " .. player_position.z, pos)
 			end
 		end
+	else
+		mod.destroy_debug_lines()
 	end
 	-- test disabling fog
 	local shading_env = World.get_data(mod.world, "shading_environment")
@@ -204,7 +258,6 @@ mod.print_debug = function(dt)
 	local shading_env = World.get_data(mod.world, "shading_environment")
 	local fog = ShadingEnvironment.scalar(shading_env, ("dense_fog"))
 	local fog_enabled = ShadingEnvironment.scalar(shading_env, ("fog_enabled"))
-	mod._current_debug_text = "fog enabled " .. fog_enabled
 
 	mod:dump(mod._new_triangle, "new triangle", 2)
 
@@ -219,7 +272,7 @@ mod.print_debug = function(dt)
 	end
 	local s = "" -- starts with an empty string
 	s = s .. "triangles = {\n"
-	for l, triangle in pairs(mod._new_triangles) do
+	for l, triangle in pairs(mod._mask_triangles) do
 		s = s .. "{\n"
 		for j, point in pairs(triangle) do
 			s = s .. "{\n"
@@ -252,19 +305,21 @@ mod._create_debug_points = function(z)
 	end
 
 	function paint_all_children(parent)
+		if not parent then
+			return
+		end
 		if parent.children then
 			-- location iteration
 			for location_name, location in pairs(parent.children) do
-				local c = Color(255, 255, 255, 255)
+				local color = Color(255, 255, 255, 255)
+				local color_first = Color(255, 255, 255, 0)
+				local highlight_color = Color(255, 255, 0, 0)
 
 				-- paint
 				if location.check.type == "polygon" then
-					if location.settings.color then
-						c = location.settings.color
-					end
 					-- highlight location that we are inside
 					-- check if camera is inside location
-					local points = location.check.featgures
+					local points = location.check.features
 					if points then
 						local pre = mod._pre_calc(location)
 						local prev = points[#points]
@@ -282,16 +337,16 @@ mod._create_debug_points = function(z)
 							prev = point
 
 							if si == 1 then
-								LineObject.add_line(mod._debug_lines, Color(255, 255, 255, 0), p_p, c_p)
-								LineObject.add_sphere(mod._debug_lines, Color(255, 255, 255, 0), c_p, 0.05)
+								LineObject.add_line(mod._debug_lines, color_first, p_p, c_p)
+								LineObject.add_sphere(mod._debug_lines, color_first, c_p, 0.05)
 							else
-								LineObject.add_line(mod._debug_lines, c, p_p, c_p)
-								LineObject.add_sphere(mod._debug_lines, c, c_p, 0.05)
+								LineObject.add_line(mod._debug_lines, color, p_p, c_p)
+								LineObject.add_sphere(mod._debug_lines, color, c_p, 0.05)
 							end
 							if mod._current_location_inside then
 								if location_name == mod._current_location_inside.name then
-									LineObject.add_line(mod._debug_lines, Color(255, 255, 0, 0), p_p, c_p)
-									LineObject.add_sphere(mod._debug_lines, Color(255, 255, 0, 0), c_p, 0.05)
+									LineObject.add_line(mod._debug_lines, highlight_color, p_p, c_p)
+									LineObject.add_sphere(mod._debug_lines, highlight_color, c_p, 0.05)
 								end
 							end
 						end
@@ -662,11 +717,6 @@ mod.create_gui = function()
 
 		-- Create a screen overla
 		mod.minimap_gui = World.create_screen_gui(top_world, "immediate")
-		local screen_origin = mod._world_to_map(Vector3(0, 0, 0))
-		mod._cam_offset = {
-			x = 0,
-			y = 0
-		}
 	end
 	Window.set_show_cursor(true)
 end
@@ -710,18 +760,34 @@ mod:hook(
 mod.render_minimap_mask = function()
 	if mod.minimap_gui and mod._current_location_inside then
 		if mod._current_location_inside.mask then
-			mod._current_debug_text = "tri"
-
 			-- all this triangle painting could  be way easier with proper procedural mesh generation or the actual mesh import from futur level editor from fatshark
 			local triangles = mod._current_location_inside.mask.triangles
 			if triangles then
 				local a = 255
 				for i, triangle in pairs(triangles) do
-					mod._render_mask_triangle(triangle, a)
+					local label = ""
+					if mod:get("debug_mode") then
+						label = "" .. i
+					end
+					mod._render_mask_triangle(triangle, a, label)
 				end
 			else
 				mod._current_debug_text = "no tris for " .. mod._current_location_inside.name
 			end
+		end
+
+		local triangles = mod._mask_triangles
+		if triangles then
+			local a = 255
+			for i, triangle in pairs(triangles) do
+				local label = ""
+				if mod:get("debug_mode") then
+					label = "" .. i
+				end
+				mod._render_mask_triangle(triangle, a, label)
+			end
+		else
+			mod._current_debug_text = "no new mask tris"
 		end
 	end
 end
@@ -729,14 +795,10 @@ mod.render_interactive_mask = function()
 	if mod.minimap_gui and mod._interactive_mask_mode then
 		-- all this triangle painting could  be way easier with proper procedural mesh generation or the actual mesh import from futur level editor from fatshark
 
-		local locomotion_extension = ScriptUnit.extension(player_unit, "locomotion_system")
-		local current_velocity = locomotion_extension:current_velocity()
-		unit_pos = unit_pos - (0.5 * context.dt) * current_velocity
-
 		local triangles = mod._new_triangles
 		if triangles then
 			for i, triangle in pairs(triangles) do
-				mod._render_mask_triangle(triangle, 150)
+				mod._render_mask_triangle(triangle, 150, "" .. i)
 			end
 		end
 		local unfinished_triangle = mod._new_triangle
@@ -752,27 +814,28 @@ mod.render_interactive_mask = function()
 				tonumber(string.format("%.2f", mod._current_settings.near))
 			}
 			table.insert(preview_triangle, preview_point)
-			mod._render_mask_triangle(preview_triangle, 150, cursor)
+			mod._render_mask_triangle(preview_triangle, 150, "P")
 		end
 	end
 end
-mod._render_mask_triangle = function(triangle, alpha, cursor)
+mod._render_mask_triangle = function(triangle, alpha, label)
+	if mod:get("debug_mode") then
+		alpha = alpha - alpha / 4
+	end
 	local color = Color(alpha, 10, 10, 10)
 	if mod.minimap_gui then
 		local p1 = Vector3(triangle[1][1], triangle[1][2], triangle[1][3])
 		local p2 = Vector3(triangle[2][1], triangle[2][2], triangle[2][3])
+		local p3 = Vector3(triangle[3][1], triangle[3][2], triangle[3][3])
+
 		local mask_p1 = mod._world_to_map(p1)
 		local mask_p2 = mod._world_to_map(p2)
+		local mask_p3 = mod._world_to_map(p3)
 
-		if not cursour then
-			local p3 = Vector3(triangle[3][1], triangle[3][2], triangle[3][3])
-
-			local mask_p3 = mod._world_to_map(p3)
-			--if mask_p1 and mask_p2 and mask_p3 then
-			Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 3, color)
-		else
-			mod._current_debug_text = "interactive tri"
-			Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, Vector2(cursor.x, cursor.y), 3, color)
+		-- optional label at last point of triangle
+		Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 3, color)
+		if label then
+			mod.ingame_ui:_show_text(label, mask_p3)
 		end
 	--end
 	end

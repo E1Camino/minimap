@@ -650,8 +650,7 @@ local level_data = {
                         },
                         mask = keep_mask,
                         settings = {
-                            near = 21,
-                            color = Color(255, 120, 255, 255)
+                            near = 21
                         }
                     },
                     keep_level_1 = {
@@ -728,8 +727,7 @@ local level_data = {
                         },
                         settings = {
                             near = 0.48,
-                            far = 5000,
-                            color = Color(255, 120, 255, 255)
+                            far = 5000
                         }
                     },
                     sienna = {
