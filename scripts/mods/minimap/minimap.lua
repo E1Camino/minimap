@@ -680,11 +680,11 @@ mod.destroy_gui = function()
 	Window.set_show_cursor(false)
 end
 mod:hook(
-	MatchmakingManager,
-	"update",
-	function(func, self, dt, ...)
+	IngameUI,
+	"post_update",
+	function(func, self, dt, t)
 		if mod.minimap_gui and mod.active and mod.camera then
-			mod:syncCam(dt)
+			--mod:syncCam(dt)
 			mod:check_locations(dt)
 			if mod:get("debug_mode") then
 				if mod._interactive_mask_mode then
@@ -693,6 +693,16 @@ mod:hook(
 			end
 			mod.render_minimap_mask()
 			mod.print_live()
+		end
+		func(self, dt, t)
+	end
+)
+mod:hook(
+	MatchmakingManager,
+	"update",
+	function(func, self, dt, ...)
+		if mod.minimap_gui and mod.active and mod.camera then
+			mod:syncCam(dt)
 		end
 		func(self, dt, ...)
 	end
@@ -718,6 +728,10 @@ end
 mod.render_interactive_mask = function()
 	if mod.minimap_gui and mod._interactive_mask_mode then
 		-- all this triangle painting could  be way easier with proper procedural mesh generation or the actual mesh import from futur level editor from fatshark
+
+		local locomotion_extension = ScriptUnit.extension(player_unit, "locomotion_system")
+		local current_velocity = locomotion_extension:current_velocity()
+		unit_pos = unit_pos - (0.5 * context.dt) * current_velocity
 
 		local triangles = mod._new_triangles
 		if triangles then
