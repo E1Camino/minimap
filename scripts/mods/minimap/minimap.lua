@@ -112,7 +112,7 @@ end
 mod.print_live = function()
 	local d = mod:get("debug_mode")
 
-	if d then
+	if false then
 		-- show location polygons
 		local same_location = mod._current_location_inside == mod._highlighted_location_inside
 		--if mod._debug_lines == nil or mod._should_redraw_debug_lines or not same_location then
@@ -237,6 +237,7 @@ end
 mod.create_debug_lines = function()
 	local world = mod.world
 	if not world or not Managers.player or not mod._debug_lines == nil then
+		mod:echo("no lines")
 		return
 	end
 	mod._debug_lines = World.create_line_object(world, true)
@@ -671,7 +672,7 @@ mod.create_gui = function()
 end
 mod.destroy_gui = function()
 	local top_world = Managers.world:world("top_ingame_view")
-	if top_world and mod.minima_gui then
+	if top_world and mod.minimap_gui then
 		--proc_mesh_controller:shutdown()
 		World.destroy_gui(top_world, mod.minimap_gui)
 		mod.minimap_gui = nil
@@ -682,6 +683,17 @@ mod:hook(
 	MatchmakingManager,
 	"update",
 	function(func, self, dt, ...)
+		if mod.minimap_gui and mod.active and mod.camera then
+			mod:syncCam(dt)
+			mod:check_locations(dt)
+			if mod:get("debug_mode") then
+				if mod._interactive_mask_mode then
+					mod.render_interactive_mask()
+				end
+			end
+			mod.render_minimap_mask()
+			mod.print_live()
+		end
 		func(self, dt, ...)
 	end
 )
@@ -726,21 +738,28 @@ mod.render_interactive_mask = function()
 				tonumber(string.format("%.2f", mod._current_settings.near))
 			}
 			table.insert(preview_triangle, preview_point)
-			mod._render_mask_triangle(preview_triangle, 150)
+			mod._render_mask_triangle(preview_triangle, 150, cursor)
 		end
 	end
 end
-mod._render_mask_triangle = function(triangle, alpha)
+mod._render_mask_triangle = function(triangle, alpha, cursor)
 	local color = Color(alpha, 10, 10, 10)
 	if mod.minimap_gui then
 		local p1 = Vector3(triangle[1][1], triangle[1][2], triangle[1][3])
 		local p2 = Vector3(triangle[2][1], triangle[2][2], triangle[2][3])
-		local p3 = Vector3(triangle[3][1], triangle[3][2], triangle[3][3])
 		local mask_p1 = mod._world_to_map(p1)
 		local mask_p2 = mod._world_to_map(p2)
-		local mask_p3 = mod._world_to_map(p3)
-		--if mask_p1 and mask_p2 and mask_p3 then
-		Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 10, color)
+
+		if not cursour then
+			local p3 = Vector3(triangle[3][1], triangle[3][2], triangle[3][3])
+
+			local mask_p3 = mod._world_to_map(p3)
+			--if mask_p1 and mask_p2 and mask_p3 then
+			Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 3, color)
+		else
+			mod._current_debug_text = "interactive tri"
+			Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, Vector2(cursor.x, cursor.y), 3, color)
+		end
 	--end
 	end
 end
@@ -941,17 +960,6 @@ mod.update = function(dt)
 	if not mod._level_settings then
 		mod._level_settings = mod:_get_level_settings()
 	end
-	mod:syncCam(dt)
-	mod:check_locations(dt)
-	if mod.minimap_gui and mod.active then
-		if mod:get("debug_mode") then
-			if mod._interactive_mask_mode then
-				mod.render_interactive_mask()
-			end
-		end
-		mod.render_minimap_mask()
-	end
-	mod.print_live()
 end
 
 mod.on_unload = function(exit_game)
