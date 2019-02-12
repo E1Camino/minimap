@@ -83,6 +83,10 @@ mod.toggle_mask_mode = function()
 	end
 	-- toggle mode
 	mod._interactive_mask_mode = not mod._interactive_mask_mode
+
+	if not mod._interactive_mask_mode then
+		mod._move_triangles_to_triangle_strip()
+	end
 end
 mod.toggle_interactive_triangle_mode = function()
 	mod._interactive_mask_multi_triangle = not mod._interactive_mask_multi_triangle
@@ -135,7 +139,13 @@ mod._move_points_to_triangle = function()
 	end
 end
 mod._move_triangles_to_triangle_strip = function()
-	mod._mask_triangles = mod._new_triangles
+	table.insert(
+		mod._mask_triangles,
+		{
+			triangles = mod._new_triangles
+		}
+	)
+	mod._new_triangle = {}
 	mod._new_triangles = {}
 end
 mod.add_last_point = function()
@@ -270,22 +280,28 @@ mod.print_debug = function(dt)
 			stack[i] = stack[i] .. table.remove(stack)
 		end
 	end
-	local s = "" -- starts with an empty string
-	s = s .. "triangles = {\n"
-	for l, triangle in pairs(mod._mask_triangles) do
-		s = s .. "{\n"
-		for j, point in pairs(triangle) do
-			s = s .. "{\n"
-			s = s .. "" .. point[1] .. ",\n"
-			s = s .. "" .. point[2] .. ",\n"
-			s = s .. "" .. point[3] .. ",\n"
-			s = s .. "},\n"
+	for l, trianglestrip in pairs(mod._mask_triangles) do
+		mod:dump(trianglestrip, "strip", 4)
+		if trianglestrip then
+			local s = "mask_" .. l .. " = {\n" -- starts with an empty string
+			s = s .. "triangles = {\n"
+			for m, triangle in pairs(trianglestrip.triangles) do
+				mod:dump(triangle, "triangles", 3)
+				s = s .. "{\n"
+				for j, point in pairs(triangle) do
+					s = s .. "{\n"
+					s = s .. "" .. point[1] .. ",\n"
+					s = s .. "" .. point[2] .. ",\n"
+					s = s .. "" .. point[3] .. ",\n"
+					s = s .. "},\n"
+				end
+				s = s .. "},\n"
+			end
+			s = s .. "}\n}\n"
+			-- warn so we can dump it into the log file and copy paste it into our level settings
+			mod:warning(s)
 		end
-		s = s .. "},\n"
 	end
-	s = s .. "}\n"
-	-- warn so we can dump it into the log file and copy paste it into our level settings
-	mod:warning(s)
 end
 mod.create_debug_lines = function()
 	local world = mod.world
@@ -758,47 +774,50 @@ mod:hook(
 	end
 )
 mod.render_minimap_mask = function()
-	if mod.minimap_gui and mod._current_location_inside then
-		if mod._current_location_inside.mask then
-			-- all this triangle painting could  be way easier with proper procedural mesh generation or the actual mesh import from futur level editor from fatshark
-			local triangles = mod._current_location_inside.mask.triangles
-			if triangles then
-				local a = 255
-				for i, triangle in pairs(triangles) do
-					local label = ""
-					if mod:get("debug_mode") then
-						label = "" .. i
+	local render_masks = function(masks)
+		if not masks then
+			return
+		end
+		local default_color = Color(255, 10, 10, 10)
+		if mod:get("debug_mode") then
+			default_color = Color(190, 10, 10, 10)
+		end
+		for i, mask in pairs(masks) do
+			if mask then
+				local color = default_color
+				local c = mask.color
+				if c then
+					color = Color(c[1], c[2], c[3], c[4])
+				end
+				if mask.triangles then
+					for j, triangle in pairs(mask.triangles) do
+						if triangle then
+							local label = ""
+							if mod:get("debug_mode") then
+								label = "" .. i .. "-" .. j
+							end
+							mod._render_mask_triangle(triangle, color, label)
+						end
 					end
-					mod._render_mask_triangle(triangle, a, label)
 				end
-			else
-				mod._current_debug_text = "no tris for " .. mod._current_location_inside.name
 			end
 		end
+	end
 
-		local triangles = mod._mask_triangles
-		if triangles then
-			local a = 255
-			for i, triangle in pairs(triangles) do
-				local label = ""
-				if mod:get("debug_mode") then
-					label = "" .. i
-				end
-				mod._render_mask_triangle(triangle, a, label)
-			end
-		else
-			mod._current_debug_text = "no new mask tris"
-		end
+	if mod.minimap_gui and mod._current_location_inside then
+		render_masks(mod._current_location_inside.masks)
+		render_masks(mod._mask_triangles)
 	end
 end
 mod.render_interactive_mask = function()
 	if mod.minimap_gui and mod._interactive_mask_mode then
 		-- all this triangle painting could  be way easier with proper procedural mesh generation or the actual mesh import from futur level editor from fatshark
 
-		local triangles = mod._new_triangles
+		local color = Color(150, 10, 10, 10)
+		local triangles = mod._new_triwaangles
 		if triangles then
 			for i, triangle in pairs(triangles) do
-				mod._render_mask_triangle(triangle, 150, "" .. i)
+				mod._render_mask_triangle(triangle, color, "" .. i)
 			end
 		end
 		local unfinished_triangle = mod._new_triangle
@@ -814,15 +833,18 @@ mod.render_interactive_mask = function()
 				tonumber(string.format("%.2f", mod._current_settings.near))
 			}
 			table.insert(preview_triangle, preview_point)
-			mod._render_mask_triangle(preview_triangle, 150, "P")
+			mod._render_mask_triangle(preview_triangle, Color(150, 10, 10, 10), "P")
 		end
 	end
 end
-mod._render_mask_triangle = function(triangle, alpha, label)
-	if mod:get("debug_mode") then
-		alpha = alpha - alpha / 4
+mod._render_mask_triangle = function(triangle, color, label)
+	if not color then
+		local alpha = 255
+		if mod:get("debug_mode") then
+			alpha = alpha - alpha / 4
+		end
+		color = Color(alpha, 10, 10, 10)
 	end
-	local color = Color(alpha, 10, 10, 10)
 	if mod.minimap_gui then
 		local p1 = Vector3(triangle[1][1], triangle[1][2], triangle[1][3])
 		local p2 = Vector3(triangle[2][1], triangle[2][2], triangle[2][3])
@@ -837,7 +859,6 @@ mod._render_mask_triangle = function(triangle, alpha, label)
 		if label then
 			mod.ingame_ui:_show_text(label, mask_p3)
 		end
-	--end
 	end
 end
 mod._world_to_map = function(world_position)
