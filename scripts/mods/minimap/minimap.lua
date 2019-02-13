@@ -788,6 +788,9 @@ mod.render_minimap_mask = function()
 				local c = mask.color
 				if c then
 					color = Color(c[1], c[2], c[3], c[4])
+					if mod:get("debug_mode") then
+						color = Color(c[1] - c[1] / 4, c[2], c[3], c[4])
+					end
 				end
 				if mask.triangles then
 					for j, triangle in pairs(mask.triangles) do
@@ -814,7 +817,7 @@ mod.render_interactive_mask = function()
 		-- all this triangle painting could  be way easier with proper procedural mesh generation or the actual mesh import from futur level editor from fatshark
 
 		local color = Color(150, 10, 10, 10)
-		local triangles = mod._new_triwaangles
+		local triangles = mod._new_triangles
 		if triangles then
 			for i, triangle in pairs(triangles) do
 				mod._render_mask_triangle(triangle, color, "" .. i)
