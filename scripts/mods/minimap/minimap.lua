@@ -287,19 +287,24 @@ mod.print_debug = function(dt)
 			s = s .. "triangles = {\n"
 			for m, triangle in pairs(trianglestrip.triangles) do
 				mod:dump(triangle, "triangles", 3)
-				s = s .. "{\n"
+				s = s .. "{"
 				for j, point in pairs(triangle) do
-					s = s .. "{\n"
-					s = s .. "" .. point[1] .. ",\n"
-					s = s .. "" .. point[2] .. ",\n"
-					s = s .. "" .. point[3] .. ",\n"
-					s = s .. "},\n"
+					s = s .. "{"
+					s = s .. "" .. point[1] .. ","
+					s = s .. "" .. point[2] .. ","
+					s = s .. "" .. point[3]
+					if j == 3 then
+						s = s .. "}\n"
+					else
+						s = s .. "},"
+					end
 				end
-				s = s .. "},\n"
+				s = s .. "},"
 			end
 			s = s .. "}\n}\n"
 			-- warn so we can dump it into the log file and copy paste it into our level settings
 			mod:warning(s)
+			mod:set("masks", s)
 		end
 	end
 end
