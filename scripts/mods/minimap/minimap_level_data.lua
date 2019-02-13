@@ -217,8 +217,33 @@ local level_data = {
                             0
                         },
                         {
-                            -6.074,
-                            14.904,
+                            -8.312,
+                            12.8,
+                            0
+                        },
+                        {
+                            -14.423,
+                            27.596,
+                            0
+                        },
+                        {
+                            0.833,
+                            33.636,
+                            0
+                        },
+                        {
+                            4.217,
+                            34.227,
+                            0
+                        },
+                        {
+                            7.944,
+                            16.525,
+                            0
+                        },
+                        {
+                            4.666,
+                            15.191,
                             0
                         },
                         {
@@ -227,18 +252,18 @@ local level_data = {
                             0
                         },
                         {
-                            15.056,
-                            6.571,
+                            14.207,
+                            7.384,
                             0
                         },
                         {
-                            18.428,
-                            6.627,
+                            22.029,
+                            8.895,
                             0
                         },
                         {
-                            18.46,
-                            4.897,
+                            27.141,
+                            7.63,
                             0
                         },
                         {
@@ -364,35 +389,270 @@ local level_data = {
                         },
                         masks = keep_masks,
                         settings = {
-                            near = 10.8
+                            near = 9
+                        },
+                        children = {
+                            keep_ground_floor = {
+                                name = "keep_ground_floor",
+                                check = {
+                                    type = "below",
+                                    height = 4.5
+                                },
+                                children = {
+                                    armoury = {
+                                        name = "armoury",
+                                        check = {
+                                            type = "polygon",
+                                            features = {
+                                                {
+                                                    -21.351,
+                                                    -7.934,
+                                                    4.5
+                                                },
+                                                {
+                                                    -0.833,
+                                                    -3.38,
+                                                    4.5
+                                                },
+                                                {
+                                                    8.945,
+                                                    -21.1563,
+                                                    4.5
+                                                },
+                                                {
+                                                    -17.76,
+                                                    -32.37,
+                                                    4.5
+                                                }
+                                            }
+                                        },
+                                        pois = {
+                                            {
+                                                label = "down",
+                                                pos = {
+                                                    -5.973,
+                                                    -10.711,
+                                                    0.67
+                                                }
+                                            },
+                                            {
+                                                label = "down",
+                                                pos = {
+                                                    8.264,
+                                                    -12.058,
+                                                    0.67
+                                                }
+                                            }
+                                        },
+                                        settings = {
+                                            near = 5.7
+                                        }
+                                    },
+                                    saltz = {
+                                        name = "saltz",
+                                        check = {
+                                            type = "below",
+                                            height = 0.48
+                                        },
+                                        masks = dofile("scripts/mods/minimap/inn_level_saltz_masks"),
+                                        pois = {
+                                            {
+                                                label = "up",
+                                                pos = {
+                                                    -7.098,
+                                                    -10.36,
+                                                    -0.7
+                                                }
+                                            },
+                                            {
+                                                label = "up",
+                                                pos = {
+                                                    7.628,
+                                                    -11.752,
+                                                    -0.7
+                                                }
+                                            },
+                                            {
+                                                label = "up",
+                                                pos = {
+                                                    -4.484,
+                                                    12.854,
+                                                    0.02
+                                                }
+                                            }
+                                        },
+                                        settings = {
+                                            near = 0.48,
+                                            far = 5000
+                                        }
+                                    }
+                                },
+                                settings = {
+                                    near = 5.7
+                                }
+                            },
+                            forge = {
+                                name = "forge",
+                                check = {
+                                    type = "polygon",
+                                    features = {
+                                        {
+                                            -21.351,
+                                            -7.934,
+                                            4.5
+                                        },
+                                        {
+                                            -0.833,
+                                            -3.38,
+                                            4.5
+                                        },
+                                        {
+                                            8.945,
+                                            -21.1563,
+                                            4.5
+                                        },
+                                        {
+                                            -17.76,
+                                            -32.37,
+                                            4.5
+                                        }
+                                    }
+                                },
+                                pois = {
+                                    {
+                                        label = "down",
+                                        pos = {
+                                            -5.973,
+                                            -10.711,
+                                            0.67
+                                        }
+                                    },
+                                    {
+                                        label = "down",
+                                        pos = {
+                                            8.264,
+                                            -12.058,
+                                            0.67
+                                        }
+                                    }
+                                },
+                                settings = {
+                                    near = 9.1
+                                }
+                            },
+                            bridge = {
+                                name = "bridge",
+                                check = {
+                                    type = "polygon",
+                                    features = {
+                                        {
+                                            10.593,
+                                            9.931,
+                                            0
+                                        },
+                                        {
+                                            32.445,
+                                            10.227,
+                                            0
+                                        },
+                                        {
+                                            34.223,
+                                            -20.402,
+                                            0
+                                        },
+                                        {
+                                            7.852,
+                                            -18.328,
+                                            0
+                                        }
+                                    }
+                                },
+                                settings = {
+                                    near = 6
+                                }
+                            }
                         }
                     },
-                    saltz = {
-                        name = "saltz",
+                    above_olesya = {
+                        name = "above_olesya",
                         check = {
-                            type = "below",
-                            height = 2
+                            type = "above",
+                            height = 7.6
                         },
-                        masks = dofile("scripts/mods/minimap/inn_level_saltz_masks"),
                         settings = {
-                            near = 0.48,
-                            far = 5000
+                            near = 9.2
                         }
                     },
                     sienna = {
                         name = "sienna",
                         check = {
-                            type = "polygon",
-                            features = {
-                                {
-                                    8.85047,
-                                    -3.24998,
-                                    10
-                                }
-                            }
+                            type = "above",
+                            height = 10
                         },
                         settings = {
-                            near = 20
+                            near = 14
+                        },
+                        children = {
+                            trophy_level = {
+                                name = "trophy_level",
+                                check = {
+                                    type = "above",
+                                    height = 12
+                                },
+                                children = {
+                                    trophy_room = {
+                                        name = "trophy_room",
+                                        check = {
+                                            type = "polygon",
+                                            features = {
+                                                {
+                                                    18.474,
+                                                    -13.288,
+                                                    0
+                                                },
+                                                {
+                                                    21.569,
+                                                    -10.719,
+                                                    0
+                                                },
+                                                {
+                                                    28.069,
+                                                    -8.579,
+                                                    0
+                                                },
+                                                {
+                                                    28.014,
+                                                    3.28,
+                                                    0
+                                                },
+                                                {
+                                                    13.514,
+                                                    3.087,
+                                                    0
+                                                },
+                                                {
+                                                    13.45,
+                                                    -8.57,
+                                                    0
+                                                }
+                                            }
+                                        },
+                                        settings = {
+                                            near = 15.5
+                                        }
+                                    }
+                                }
+                            },
+                            toilet = {
+                                name = "toilet",
+                                check = {
+                                    type = "above",
+                                    height = 18
+                                },
+                                settings = {
+                                    near = 23
+                                }
+                            }
                         }
                     }
                 }

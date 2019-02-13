@@ -812,9 +812,36 @@ mod.render_minimap_mask = function()
 		end
 	end
 
+	local render_pois = function(points_of_interest)
+		if not points_of_interest then
+			return
+		end
+		for i, poi in pairs(points_of_interest) do
+			if poi then
+				if poi.pos then
+					local pos = Vector3(poi.pos[1], poi.pos[2], poi.pos[3])
+					local screen_pos = mod._world_to_map(pos)
+					local color = Color(255, 255, 255)
+					if mod.ingame_ui.ui_renderer.gui then
+						Gui.text(
+							mod.ingame_ui.ui_renderer.gui,
+							poi.label,
+							"materials/fonts/gw_head_32",
+							40,
+							"gw_head_20",
+							screen_pos,
+							color
+						)
+					end
+				end
+			end
+		end
+	end
+
 	if mod.minimap_gui and mod._current_location_inside then
 		render_masks(mod._current_location_inside.masks)
 		render_masks(mod._mask_triangles)
+		render_pois(mod._current_location_inside.pois)
 	end
 end
 mod.render_interactive_mask = function()
