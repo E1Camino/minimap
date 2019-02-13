@@ -759,6 +759,203 @@ local level_data = {
             far = 400,
             height = 400
         }
+    },
+    farmlands = {
+        name = "farmlands",
+        children = {
+            open = {
+                name = "open",
+                check = {
+                    type = "above",
+                    height = 0
+                },
+                settings = {
+                    area = 12,
+                    near = 17,
+                    far = 400,
+                    height = 400
+                }
+            },
+            mill_knopfelspiel = {
+                name = "mill_knopfelspiel",
+                check = {
+                    type = "polygon",
+                    features = {
+                        {
+                            176.259,
+                            -179.312,
+                            0
+                        },
+                        {
+                            176.259,
+                            -174.405,
+                            0
+                        },
+                        {
+                            180.751,
+                            -166.477,
+                            0
+                        },
+                        {
+                            183.513,
+                            -161.789,
+                            0
+                        },
+                        {
+                            189.159,
+                            -149.393,
+                            0
+                        },
+                        {
+                            208.215,
+                            -137.004,
+                            0
+                        },
+                        {
+                            230.008,
+                            -166.358,
+                            0
+                        },
+                        {
+                            219.813,
+                            -184.887,
+                            0
+                        },
+                        {
+                            206.554,
+                            -194.951,
+                            0
+                        },
+                        {
+                            202.81,
+                            -198.746,
+                            0
+                        },
+                        {
+                            178.238,
+                            -188.466,
+                            0
+                        }
+                    }
+                },
+                settings = {
+                    near = 15
+                },
+                children = {
+                    tome = {
+                        name = "tome",
+                        check = {
+                            type = "above",
+                            height = 6.5
+                        },
+                        settings = {
+                            near = 20
+                        }
+                    },
+                    cheese = {
+                        name = "cheese",
+                        check = {
+                            type = "polygon",
+                            features = {
+                                {
+                                    195.342,
+                                    -145.257,
+                                    0
+                                },
+                                {
+                                    212.509,
+                                    -148.979,
+                                    0
+                                },
+                                {
+                                    205.731,
+                                    -136.923,
+                                    0
+                                }
+                            }
+                        },
+                        masks = dofile("scripts/mods/minimap/farmlands_cheese_masks"),
+                        settings = {
+                            near = 7.8,
+                            area = 5
+                        }
+
+                    },
+                    stable = {
+                        name = "stable",
+                        check = {
+                            type = "polygon",
+                            features = {
+                                {
+                                    212.222,
+                                    -180.316,
+                                    0
+                                },
+                                {
+                                    218.957,
+                                    -169.426,
+                                    0
+                                },
+                                {
+                                    194.202,
+                                    -155.593,
+                                    0
+                                },
+                                {
+                                    187.813,
+                                    -166.482,
+                                    0
+                                }
+                            }
+                        },
+                        masks = dofile("scripts/mods/minimap/farmlands_mill_knopfelspiel_masks"),
+                        settings = {
+                            near = 8.5,
+                            area = 8
+                        }
+
+                    },
+                    waggon = {
+                        name = "waggon",
+                        check = {
+                            type = "polygon",
+                            features = {
+                                {
+                                    180.787,
+                                    -178.082,
+                                    0
+                                },
+                                {
+                                    180.916,
+                                    -174.238,
+                                    0
+                                },
+                                {
+                                    176.128,
+                                    -174.438,
+                                    0
+                                },
+                                {
+                                    176.136,
+                                    -177.966,
+                                    0
+                                }
+                            }
+                        },
+                        settings = {
+                            near = 12,
+                            area = 10
+                        }
+                    }
+                }
+            }
+        },
+        settings = {
+            area = 12,
+            near = 17,
+            far = 400,
+            height = 400
+        }
     }
 }
 return level_data

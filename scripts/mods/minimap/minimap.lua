@@ -280,11 +280,11 @@ mod.print_debug = function(dt)
 			stack[i] = stack[i] .. table.remove(stack)
 		end
 	end
+	local s = "masks = " -- starts with an empty string
 	for l, trianglestrip in pairs(mod._mask_triangles) do
-		mod:dump(trianglestrip, "strip", 4)
+		--mod:dump(trianglestrip, "strip", 4)
 		if trianglestrip then
-			local s = "mask_" .. l .. " = {\n" -- starts with an empty string
-			s = s .. "triangles = {\n"
+			s = s .. "{triangles = {\n"
 			for m, triangle in pairs(trianglestrip.triangles) do
 				mod:dump(triangle, "triangles", 3)
 				s = s .. "{"
@@ -294,19 +294,29 @@ mod.print_debug = function(dt)
 					s = s .. "" .. point[2] .. ","
 					s = s .. "" .. point[3]
 					if j == 3 then
-						s = s .. "}\n"
+						s = s .. "}"
 					else
 						s = s .. "},"
 					end
 				end
-				s = s .. "},"
+				if m == #trianglestrip.triangles then
+					s = s .. "}\n"
+				else
+					s = s .. "},\n"
+				end
+				s = s .. ""
 			end
-			s = s .. "}\n}\n"
-			-- warn so we can dump it into the log file and copy paste it into our level settings
-			mod:warning(s)
-			mod:set("masks", s)
+			if l == #mod._mask_triangles then
+				s = s .. "}}\n"
+			else
+				s = s .. "}},\n"
+			end
 		end
 	end
+	s = s .. "}\n"
+	-- warn so we can dump it into the log file and copy paste it into our level settings
+	mod:warning(s)
+	mod:set("masks", s)
 end
 mod.create_debug_lines = function()
 	local world = mod.world
@@ -487,8 +497,8 @@ mod.check_locations = function(dt)
 	end
 
 	overwrite(mod._level_settings)
-	local hasChildren = true
 	local location_list = mod._level_settings.children
+	local hasChildren = location_list
 	while (hasChildren) do
 		hasChildren = false
 		for location_name, location in pairs(location_list) do
