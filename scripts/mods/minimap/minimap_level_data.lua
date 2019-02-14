@@ -9,14 +9,60 @@ local inn_default = {
     area = 12
 }
 
-local keep_masks = {
+local keep_level_1_masks = dofile("scripts/mods/minimap/inn_level_1_masks")
+local keep_level_1_pois = {
     {
-        triangles = {},
-        color = {
-            255,
-            255,
-            0,
-            0
+        label = "down",
+        pos = {
+            -6.7,
+            -10.711,
+            0.67
+        }
+    },
+    {
+        label = "down",
+        pos = {
+            7.264,
+            -12.058,
+            0.67
+        }
+    },
+    {
+        label = "location_keep_armoury",
+        location = true,
+        translated = true,
+        pos = {
+            -1.179,
+            -15.055,
+            3.12
+        }
+    },
+    {
+        label = "location_keep_krubers_room",
+        location = true,
+        translated = true,
+        pos = {
+            1.437,
+            -25.089,
+            2.89
+        }
+    },
+    {
+        label = "location_keep_forge",
+        location = true,
+        translated = true,
+        pos = {
+            -3.64,
+            21.336,
+            2.89
+        }
+    },
+    {
+        label = "down",
+        pos = {
+            -6.35,
+            15.45,
+            0.67
         }
     }
 }
@@ -323,7 +369,6 @@ local level_data = {
                         }
                     }
                 },
-                masks = keep_masks,
                 settings = {
                     near = 15.6,
                     area = 8
@@ -376,7 +421,6 @@ local level_data = {
                                 }
                             }
                         },
-                        masks = keep_masks,
                         settings = {
                             near = 21
                         }
@@ -387,7 +431,8 @@ local level_data = {
                             type = "below",
                             height = 7.6
                         },
-                        masks = keep_masks,
+                        masks = keep_level_1_masks,
+                        pois = keep_level_1_pois,
                         settings = {
                             near = 9
                         },
@@ -396,8 +441,10 @@ local level_data = {
                                 name = "keep_ground_floor",
                                 check = {
                                     type = "below",
-                                    height = 4.5
+                                    height = 5
                                 },
+                                masks = keep_level_1_masks,
+                                pois = keep_level_1_pois,
                                 children = {
                                     armoury = {
                                         name = "armoury",
@@ -426,24 +473,8 @@ local level_data = {
                                                 }
                                             }
                                         },
-                                        pois = {
-                                            {
-                                                label = "down",
-                                                pos = {
-                                                    -5.973,
-                                                    -10.711,
-                                                    0.67
-                                                }
-                                            },
-                                            {
-                                                label = "down",
-                                                pos = {
-                                                    8.264,
-                                                    -12.058,
-                                                    0.67
-                                                }
-                                            }
-                                        },
+                                        masks = keep_level_1_masks,
+                                        pois = keep_level_1_pois,
                                         settings = {
                                             near = 5.7
                                         }
@@ -478,6 +509,16 @@ local level_data = {
                                                     -4.484,
                                                     12.854,
                                                     0.02
+                                                }
+                                            },
+                                            {
+                                                label = "location_keep_saltzpyres_room",
+                                                translated = true,
+                                                is_location = true,
+                                                pos = {
+                                                    -16.575,
+                                                    1.9,
+                                                    -1.737
                                                 }
                                             }
                                         },
@@ -518,30 +559,14 @@ local level_data = {
                                         }
                                     }
                                 },
-                                pois = {
-                                    {
-                                        label = "down",
-                                        pos = {
-                                            -5.973,
-                                            -10.711,
-                                            0.67
-                                        }
-                                    },
-                                    {
-                                        label = "down",
-                                        pos = {
-                                            8.264,
-                                            -12.058,
-                                            0.67
-                                        }
-                                    }
-                                },
+                                masks = keep_level_1_masks,
+                                pois = keep_level_1_pois,
                                 settings = {
                                     near = 9.1
                                 }
                             },
-                            bridge = {
-                                name = "bridge",
+                            bridge_of_shadows = {
+                                name = "bridge_of_shadows",
                                 check = {
                                     type = "polygon",
                                     features = {
@@ -567,6 +592,8 @@ local level_data = {
                                         }
                                     }
                                 },
+                                pois = keep_level_1_pois,
+                                masks = keep_level_1_masks,
                                 settings = {
                                     near = 6
                                 }
@@ -879,7 +906,6 @@ local level_data = {
                             near = 7.8,
                             area = 5
                         }
-
                     },
                     stable = {
                         name = "stable",
@@ -913,7 +939,6 @@ local level_data = {
                             near = 8.5,
                             area = 8
                         }
-
                     },
                     waggon = {
                         name = "waggon",

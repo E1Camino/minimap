@@ -191,4 +191,18 @@ return {
 			}
 		}
 	}
+	-- 	custom_gui_textures = {
+	-- 		textures = {
+	-- 			"materials/mods/minimap/paper",
+	-- 			"materials/mods/minimap/concrete"
+	-- 		},
+	-- 		ui_renderer_injections = {
+	-- 			{
+	-- 				"ingame_ui",
+	-- 				"materials/mods/minimap/paper",
+	-- 				"materials/mods/minimap/concrete"
+	-- 			}
+	-- 		}
+	-- 	}
+	-- }
 }

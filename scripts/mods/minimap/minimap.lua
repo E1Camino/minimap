@@ -1,5 +1,7 @@
 local mod = get_mod("minimap")
 
+local text_definitions = local_require("scripts/ui/views/area_indicator_ui_definitions")
+
 -- will not use procedural meshes or meshes at all until proper fatshark tools arrive
 -- https://help.autodesk.com/view/Stingray/ENU/?guid=__lua_ref_exa_ex__snippets_proc__meshes_html
 -- local proc_mesh_controller = dofile("scripts/mods/minimap/proc_mesh_controller")
@@ -37,6 +39,7 @@ mod._mask_triangles = {}
 mod._new_triangles = {}
 mod._new_triangle = {}
 mod._ref_point = nil
+mod._current_location = ""
 
 -- manipulating camera props/settings via chat command or some keybindings (a bit like the photopmod but less ambitious :P)
 mod.increaseProp = function()
@@ -280,7 +283,7 @@ mod.print_debug = function(dt)
 			stack[i] = stack[i] .. table.remove(stack)
 		end
 	end
-	local s = "masks = " -- starts with an empty string
+	local s = "masks = {" -- starts with an empty string
 	for l, trianglestrip in pairs(mod._mask_triangles) do
 		--mod:dump(trianglestrip, "strip", 4)
 		if trianglestrip then
@@ -760,6 +763,23 @@ mod.destroy_gui = function()
 	end
 	Window.set_show_cursor(false)
 end
+mod.print_game_location = function()
+	local player_manager = Managers.player
+	local local_player = player_manager:local_player()
+	local player_unit = local_player.player_unit
+
+	if Unit.alive(player_unit) then
+		local player_hud_extension = ScriptUnit.extension(player_unit, "hud_system")
+		local current_location = player_hud_extension.current_location
+		if not current_location == mod.saved_location then
+			-- play the sound that appears when location has changed
+			local wwise_world = Managers.world:wwise_world(mod.world)
+			WwiseWorld.trigger_event(wwise_world, "hud_area_indicator")
+		end
+		mod.saved_location = current_location
+	end
+end
+
 mod:hook(
 	IngameUI,
 	"post_update",
@@ -774,6 +794,7 @@ mod:hook(
 			end
 			mod.render_minimap_mask()
 			mod.print_live()
+			mod.print_game_location()
 		end
 		func(self, dt, t)
 	end
@@ -832,16 +853,12 @@ mod.render_minimap_mask = function()
 					local pos = Vector3(poi.pos[1], poi.pos[2], poi.pos[3])
 					local screen_pos = mod._world_to_map(pos)
 					local color = Color(255, 255, 255)
+					local text = poi.label
+					if poi.translated then
+						text = Localize(poi.label)
+					end
 					if mod.ingame_ui.ui_renderer.gui then
-						Gui.text(
-							mod.ingame_ui.ui_renderer.gui,
-							poi.label,
-							"materials/fonts/gw_head_32",
-							40,
-							"gw_head_20",
-							screen_pos,
-							color
-						)
+						Gui.text(mod.ingame_ui.ui_renderer.gui, text, "materials/fonts/gw_head_32", 40, "gw_head_20", screen_pos, color)
 					end
 				end
 			end
@@ -1054,6 +1071,15 @@ mod:hook_safe(
 		for player, camera_unit in pairs(self.camera_units) do
 			local viewport_name = player.viewport_name
 		end
+	end
+)
+
+mod:hook(
+	PlayerHud,
+	"set_current_location",
+	function(func, self, location)
+		mod:echo(location)
+		return func(self, location)
 	end
 )
 

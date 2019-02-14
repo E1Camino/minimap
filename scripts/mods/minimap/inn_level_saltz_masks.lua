@@ -1,5 +1,4 @@
 local saltz_color = { 255, 10, 10, 10 }
-
 return {
     {
         triangles = {
