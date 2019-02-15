@@ -272,8 +272,6 @@ mod.print_debug = function(dt)
 	local fog = ShadingEnvironment.scalar(shading_env, ("dense_fog"))
 	local fog_enabled = ShadingEnvironment.scalar(shading_env, ("fog_enabled"))
 
-	mod:dump(mod._new_triangle, "new triangle", 2)
-
 	local addString = function(stack, s)
 		table.insert(stack, s) -- push 's' into the the stack
 		for i = table.getn(stack) - 1, 1, -1 do
@@ -285,11 +283,9 @@ mod.print_debug = function(dt)
 	end
 	local s = "masks = {" -- starts with an empty string
 	for l, trianglestrip in pairs(mod._mask_triangles) do
-		--mod:dump(trianglestrip, "strip", 4)
 		if trianglestrip then
 			s = s .. "{triangles = {\n"
 			for m, triangle in pairs(trianglestrip.triangles) do
-				mod:dump(triangle, "triangles", 3)
 				s = s .. "{"
 				for j, point in pairs(triangle) do
 					s = s .. "{"
@@ -858,7 +854,7 @@ mod.render_minimap_mask = function()
 						text = Localize(poi.label)
 					end
 					if mod.ingame_ui.ui_renderer.gui then
-						Gui.text(mod.ingame_ui.ui_renderer.gui, text, "materials/fonts/gw_head_32", 40, "gw_head_20", screen_pos, color)
+						Gui.text(mod.ingame_ui.ui_renderer.gui, text, "materials/fonts/gw_head_32", 10, "gw_head_20", screen_pos, color)
 					end
 				end
 			end
@@ -903,7 +899,7 @@ mod._render_mask_triangle = function(triangle, color, label)
 	if not color then
 		local alpha = 255
 		if mod:get("debug_mode") then
-			alpha = alpha - alpha / 4
+			alpha = alpha - alpha / 2
 		end
 		color = Color(alpha, 10, 10, 10)
 	end
