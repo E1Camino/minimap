@@ -853,8 +853,15 @@ mod.render_minimap_mask = function()
 					if poi.translated then
 						text = Localize(poi.label)
 					end
+					local size = 18
+					if poi.size then
+						size = poi.size
+					end
+					if poi.location then
+						size = 40
+					end
 					if mod.ingame_ui.ui_renderer.gui then
-						Gui.text(mod.ingame_ui.ui_renderer.gui, text, "materials/fonts/gw_head_32", 10, "gw_head_20", screen_pos, color)
+						Gui.text(mod.ingame_ui.ui_renderer.gui, text, "materials/fonts/gw_head_32", size, "gw_head_20", screen_pos, color)
 					end
 				end
 			end
@@ -912,10 +919,19 @@ mod._render_mask_triangle = function(triangle, color, label)
 		local mask_p2 = mod._world_to_map(p2)
 		local mask_p3 = mod._world_to_map(p3)
 
-		-- optional label at last point of triangle
+		-- optional label at centroid of triangle
 		Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 3, color)
 		if label then
-			mod.ingame_ui:_show_text(label, mask_p3)
+			local centroid = Vector2((p1.x + p2.x + p3.x) / 3, (p1.y + p2.y + p3.y) / 3)
+			Gui.text(
+				mod.ingame_ui.ui_renderer.gui,
+				label,
+				"materials/fonts/gw_head_32",
+				14,
+				"gw_head_20",
+				mask_p3,
+				Color(255, 255, 255)
+			)
 		end
 	end
 end

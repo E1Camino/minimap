@@ -70,6 +70,8 @@ local keep_level_1_pois = {
 local level_data = {
     inn_level = {
         name = "inn_level",
+        masks = keep_level_1_masks,
+        pois = keep_level_1_pois,
         children = {
             farm = {
                 name = "farm",
@@ -374,57 +376,6 @@ local level_data = {
                     area = 8
                 },
                 children = {
-                    lohner = {
-                        name = "lohner",
-                        check = {
-                            type = "polygon",
-                            features = {
-                                {
-                                    8.85047,
-                                    -3.24998,
-                                    10
-                                },
-                                {
-                                    3.65326,
-                                    -7.06038,
-                                    10
-                                },
-                                {
-                                    0.03,
-                                    -8.284,
-                                    12
-                                },
-                                {
-                                    -6.276,
-                                    -4.723,
-                                    12
-                                },
-                                {
-                                    -9.04664,
-                                    -1.16898,
-                                    10
-                                },
-                                {
-                                    -9.1019,
-                                    3.87,
-                                    10
-                                },
-                                {
-                                    5.44146,
-                                    4.16039,
-                                    10
-                                },
-                                {
-                                    6.28618,
-                                    -0.387159,
-                                    10
-                                }
-                            }
-                        },
-                        settings = {
-                            near = 21
-                        }
-                    },
                     keep_level_1 = {
                         name = "keep_level_1",
                         check = {
@@ -514,7 +465,7 @@ local level_data = {
                                             {
                                                 label = "location_keep_saltzpyres_room",
                                                 translated = true,
-                                                is_location = true,
+                                                location = true,
                                                 pos = {
                                                     -16.575,
                                                     1.9,
