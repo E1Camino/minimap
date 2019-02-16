@@ -40,6 +40,7 @@ mod._new_triangles = {}
 mod._new_triangle = {}
 mod._ref_point = nil
 mod._current_location = ""
+mod._scroll_factor = 1
 
 -- manipulating camera props/settings via chat command or some keybindings (a bit like the photopmod but less ambitious :P)
 mod.increaseProp = function()
@@ -265,7 +266,8 @@ mod.print_debug = function(dt)
 	)
 	mod:echo(
 		(mod.propsForToggle[mod.currentProp] == "area" and "*" or "") ..
-			"area " .. mod:get("area") .. " " .. mod._current_settings.area
+			"area " ..
+				mod:get("area") .. " " .. mod._current_settings.area .. " " .. mod._current_settings.area * mod._scroll_factor
 	)
 
 	local shading_env = World.get_data(mod.world, "shading_environment")
@@ -450,8 +452,9 @@ mod.syncCam = function(dt)
 	Camera.set_far_range(mod.shadow_cull_camera, cfar)
 	Camera.set_near_range(mod.shadow_cull_camera, cnear)
 
-	local min = mod._current_settings.area * -1
-	local max = mod._current_settings.area
+	local scroll = math.min(math.max(0.2, mod._scroll_factor), 10.0) -- at least 1/5 of setting and max 10x setting
+	local min = mod._current_settings.area * -1 * scroll
+	local max = mod._current_settings.area * scroll
 	Camera.set_orthographic_view(mod.camera, min, max, min, max)
 	Camera.set_orthographic_view(mod.shadow_cull_camera, min, max, min, max)
 
@@ -784,6 +787,16 @@ mod:hook(
 	"post_update",
 	function(func, self, dt, t)
 		if mod.minimap_gui and mod.active and mod.camera then
+			if mod.player_input then
+				local s = Vector3.y(Mouse.axis(Mouse.axis_index("wheel")))
+				local mouse_wheel = tonumber(s)
+				if mouse_wheel == 0 then
+					--					mod:echo(mouse_wheel)
+				else
+					local n = mod._scroll_factor + mouse_wheel / 100
+					mod._scroll_factor = math.min(math.max(0.2, n), 10.0) -- at least 1/5 of setting and max 10x setting
+				end
+			end
 			--mod:syncCam(dt)
 			mod:check_locations(dt)
 			if mod:get("debug_mode") then
