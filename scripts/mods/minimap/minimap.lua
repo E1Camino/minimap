@@ -41,6 +41,7 @@ mod._new_triangle = {}
 mod._ref_point = nil
 mod._current_location = ""
 mod._scroll_factor = 1
+mod._pickup_overlay_hooked = false
 
 -- manipulating camera props/settings via chat command or some keybindings (a bit like the photopmod but less ambitious :P)
 mod.increaseProp = function()
@@ -1175,7 +1176,25 @@ mod:hook(
 		end
 	end
 )
+local ItemOverlay = get_mod("item_overlay")
+if ItemOverlay then
+	mod:hook(
+		ItemOverlay,
+		"get_camera",
+		function(orig_func, player)
+			--mod:echo("c")
+			if mod.camera then
+				return mod.camera
+			else
+				return orig_func(player)
+			end
+		end
+	)
+	mod:hook_disable(ItemOverlay, "get_camera")
+end
+
 mod.update = function(dt)
+	--mod.hook_pickup_overlay()
 	if not mod.camera then
 		return
 	end
