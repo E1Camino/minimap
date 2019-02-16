@@ -19,6 +19,14 @@ return {
 				default_value = {}
 			},
 			{
+				setting_id = "teleport_to_mouse",
+				type = "keybind",
+				keybind_trigger = "pressed", -- "held" when ready
+				keybind_type = "function_call",
+				function_name = "teleport",
+				default_value = {}
+			},
+			{
 				setting_id = "toggle_debug_mode",
 				type = "keybind",
 				keybind_trigger = "pressed", -- "held" when ready

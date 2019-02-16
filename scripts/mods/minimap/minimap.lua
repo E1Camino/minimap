@@ -410,6 +410,9 @@ mod._get_viewport_cam = function(viewport_name)
 end
 mod.syncCam = function(dt)
 	local local_player_unit = Managers.player:local_player().player_unit
+	if not local_player_unit then
+		return
+	end
 	local player_position = Unit.local_position(local_player_unit, 0)
 
 	local camera_position_new = Vector3.zero()
@@ -964,6 +967,23 @@ mod.register_input = function()
 		input_manager:device_unblock_all_services("mouse")
 	end
 end
+
+mod.teleport = function()
+	-- get the player
+	local player_unit = Managers.player:local_player().player_unit
+	local locomotion_extension = ScriptUnit.extension(player_unit, "locomotion_system")
+
+	-- get the cursor position
+	local cursor = Mouse.axis(Mouse.axis_id("cursor"))
+	-- calculate clicked position in the world
+	local world_pos = Camera.screen_to_world(mod.camera, Vector3(cursor.x, cursor.y, 0), 0.5)
+	-- teleport the player to clicked position with current znear as height (so we drop into the place that is currently visible on the map)
+	locomotion_extension:teleport_to(
+		Vector3(world_pos.x, world_pos.y, mod._current_settings.near - 1), -- fixed offset of 1 so very narrow passages work a bit better
+		Unit.world_rotation(player_unit, 0)
+	)
+end
+
 mod.unregister_input = function()
 	local input_manager = mod.input_manager
 	if input_manager then
