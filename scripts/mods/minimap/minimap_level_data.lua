@@ -752,6 +752,21 @@ local level_data = {
                     near = 17,
                     far = 400,
                     height = 400
+                },
+                children = {
+                    trees_1 = {
+                        name = "trees_1",
+                        check = {
+                            type = "polygon",
+                            features = {
+                                {}
+                            }
+                        },
+                        masks = dofile("scripts/mods/minimap/farmlands_open_masks"),
+                        settings = {
+                            near = 17
+                        }
+                    }
                 }
             },
             mill_knopfelspiel = {
