@@ -557,8 +557,22 @@ local level_data = {
                             type = "above",
                             height = 7.6
                         },
-                        settings = {
-                            near = 9.2
+                        children = {
+                            between_ladders = {
+                                name = "between_ladders",
+                                check = {
+                                    type = "polygon",
+                                    features = {
+                                        {15, -17.5, 0},
+                                        {15, -7.5, 0},
+                                        {23, -7.5, 0},
+                                        {23, -17.5, 0}
+                                    }
+                                },
+                                settings = {
+                                    near = 9.2
+                                }
+                            }
                         }
                     },
                     sienna = {
