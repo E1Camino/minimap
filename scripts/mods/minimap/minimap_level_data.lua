@@ -385,7 +385,7 @@ local level_data = {
                         masks = keep_level_1_masks,
                         pois = keep_level_1_pois,
                         settings = {
-                            near = 9
+                            near = 8
                         },
                         children = {
                             keep_ground_floor = {
@@ -573,6 +573,9 @@ local level_data = {
                                     near = 9.2
                                 }
                             }
+                        },
+                        settings = {
+                            near = 11
                         }
                     },
                     sienna = {
@@ -763,25 +766,26 @@ local level_data = {
                 },
                 settings = {
                     area = 12,
-                    near = 17,
+                    near = 40,
                     far = 400,
                     height = 400
-                },
-                children = {
-                    trees_1 = {
-                        name = "trees_1",
-                        check = {
-                            type = "polygon",
-                            features = {
-                                {}
-                            }
-                        },
-                        masks = dofile("scripts/mods/minimap/farmlands_open_masks"),
-                        settings = {
-                            near = 17
-                        }
-                    }
                 }
+                -- ,
+                -- children = {
+                --     trees_1 = {
+                --         name = "trees_1",
+                --         check = {
+                --             type = "polygon",
+                --             features = {
+                --                 {}
+                --             }
+                --         },
+                --         masks = dofile("scripts/mods/minimap/farmlands_open_masks"),
+                --         settings = {
+                --             near = 17
+                --         }
+                --     }
+                -- }
             },
             mill_knopfelspiel = {
                 name = "mill_knopfelspiel",
