@@ -861,6 +861,15 @@ mod.render_minimap_mask = function()
 						size = 40
 					end
 					if mod.ingame_ui.ui_renderer.gui then
+						Gui.text(
+							mod.ingame_ui.ui_renderer.gui,
+							text,
+							"materials/fonts/gw_head_32",
+							size,
+							"gw_head_20",
+							Vector2(screen_pos.x + 2, screen_pos.y - 2),
+							Color(0, 0, 0)
+						)
 						Gui.text(mod.ingame_ui.ui_renderer.gui, text, "materials/fonts/gw_head_32", size, "gw_head_20", screen_pos, color)
 					end
 				end
