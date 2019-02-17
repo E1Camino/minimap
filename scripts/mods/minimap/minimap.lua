@@ -28,6 +28,7 @@ mod._interactive_mask_multi_triangle = false
 mod._current_settings = mod:_get_default_settings()
 mod._set_props = {}
 mod._current_location_inside = nil
+mod._prev_location_inside = nil
 mod._highlighted_location_inside = nil
 
 mod._current_debug_text = ""
@@ -42,6 +43,12 @@ mod._ref_point = nil
 mod._current_location = ""
 mod._scroll_factor = 1
 mod._pickup_overlay_hooked = false
+
+mod._area_from = nil
+mod._area_to = nil
+mod._area_t = nil
+mod._progressed_time = 0
+mod._duration = 0.4
 
 -- manipulating camera props/settings via chat command or some keybindings (a bit like the photopmod but less ambitious :P)
 mod.increaseProp = function()
@@ -528,6 +535,19 @@ mod.check_locations = function(dt)
 		end
 	end
 
+	if mod._current_settings then
+		-- if not (mod._current_location_inside.name == new_inside.name) then
+		-- 	mod:echo(mod._current_settings.area .. " -> " .. new_settings.area)
+		if not (mod._current_settings.area == new_settings.area) then
+			if not mod._area_from then
+				-- by setting mod._area_from and mod._area to we start the animation
+				mod._area_from = mod._current_settings.area
+				mod._area_to = new_settings.area
+				mod._progressed_time = 0
+			end
+		end
+	--end
+	end
 	mod._current_location_inside = new_inside
 	mod._current_settings = new_settings
 end
@@ -555,6 +575,18 @@ mod.check_location = function(location, point)
 	end
 
 	return false
+end
+mod._animate_area = function(dt)
+	if mod._area_to and mod._area_from then
+		mod._progressed_time = mod._progressed_time + dt
+		if mod._progressed_time <= mod._duration then
+			local delta_time = math.min(1, mod._progressed_time / mod._duration)
+			mod._current_settings.area = (mod._area_to - mod._area_from) * delta_time + mod._area_from
+		else
+			mod._area_to = nil
+			mod._area_from = nil
+		end
+	end
 end
 mod.is_point_in_polygon = function(self, point, vertices, pre)
 	if not pre.corners then
@@ -808,6 +840,7 @@ mod:hook(
 			mod.render_minimap_mask()
 			mod.print_live()
 			mod.print_game_location()
+			mod._animate_area(dt)
 		end
 		func(self, dt, t)
 	end

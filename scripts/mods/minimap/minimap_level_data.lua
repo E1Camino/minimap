@@ -9,7 +9,7 @@ local inn_default = {
     area = 12
 }
 
-local keep_level_1_masks = dofile("scripts/mods/minimap/inn_level_1_masks")
+local keep_level_1_masks = dofile("scripts/mods/minimap/masks/inn_level/level_1")
 local keep_level_1_pois = {
     {
         label = "down",
@@ -70,8 +70,6 @@ local keep_level_1_pois = {
 local level_data = {
     inn_level = {
         name = "inn_level",
-        masks = keep_level_1_masks,
-        pois = keep_level_1_pois,
         children = {
             farm = {
                 name = "farm",
@@ -436,7 +434,7 @@ local level_data = {
                                             type = "below",
                                             height = 0.48
                                         },
-                                        masks = dofile("scripts/mods/minimap/inn_level_saltz_masks"),
+                                        masks = dofile("scripts/mods/minimap/masks/inn_level/saltz"),
                                         pois = {
                                             {
                                                 label = "up",
@@ -489,23 +487,23 @@ local level_data = {
                                     type = "polygon",
                                     features = {
                                         {
-                                            -21.351,
-                                            -7.934,
+                                            -5.8421,
+                                            8.569,
                                             4.5
                                         },
                                         {
-                                            -0.833,
-                                            -3.38,
+                                            -11.614,
+                                            24.103,
                                             4.5
                                         },
                                         {
-                                            8.945,
-                                            -21.1563,
+                                            5.55,
+                                            30.309,
                                             4.5
                                         },
                                         {
-                                            -17.76,
-                                            -32.37,
+                                            9.96,
+                                            8.72,
                                             4.5
                                         }
                                     }
@@ -780,7 +778,7 @@ local level_data = {
                 --                 {}
                 --             }
                 --         },
-                --         masks = dofile("scripts/mods/minimap/farmlands_open_masks"),
+                --         masks = dofile("scripts/mods/minimap/masks/farmlands/open"),
                 --         settings = {
                 --             near = 17
                 --         }
@@ -885,7 +883,7 @@ local level_data = {
                                 }
                             }
                         },
-                        masks = dofile("scripts/mods/minimap/farmlands_cheese_masks"),
+                        masks = dofile("scripts/mods/minimap/masks/farmlands/cheese"),
                         settings = {
                             near = 7.8,
                             area = 5
@@ -918,7 +916,7 @@ local level_data = {
                                 }
                             }
                         },
-                        masks = dofile("scripts/mods/minimap/farmlands_mill_knopfelspiel_masks"),
+                        masks = dofile("scripts/mods/minimap/masks/farmlands/mill_knopfelspiel"),
                         settings = {
                             near = 8.5,
                             area = 8
