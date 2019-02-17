@@ -52,8 +52,8 @@ local keep_level_1_pois = {
         location = true,
         translated = true,
         pos = {
-            -3.64,
-            21.336,
+            -2.07,
+            20.79,
             2.89
         }
     },

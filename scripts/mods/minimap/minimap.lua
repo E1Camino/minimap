@@ -877,6 +877,7 @@ mod.render_minimap_mask = function()
 					if poi.location then
 						size = 40
 					end
+					size = size / mod._scroll_factor
 					if mod.ingame_ui.ui_renderer.gui then
 						Gui.text(
 							mod.ingame_ui.ui_renderer.gui,
@@ -946,7 +947,7 @@ mod._render_mask_triangle = function(triangle, color, label)
 		local mask_p3 = mod._world_to_map(p3)
 
 		-- optional label at centroid of triangle
-		Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 3, color)
+		Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 3999, color)
 		if label then
 			local centroid = Vector2((p1.x + p2.x + p3.x) / 3, (p1.y + p2.y + p3.y) / 3)
 			Gui.text(
