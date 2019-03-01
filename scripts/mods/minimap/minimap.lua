@@ -1,7 +1,7 @@
 local mod = get_mod("minimap")
 
 local text_definitions = local_require("scripts/ui/views/area_indicator_ui_definitions")
-
+local definitions = local_require("scripts/ui/views/ingame_hud_definitions")
 -- will not use procedural meshes or meshes at all until proper fatshark tools arrive
 -- https://help.autodesk.com/view/Stingray/ENU/?guid=__lua_ref_exa_ex__snippets_proc__meshes_html
 -- local proc_mesh_controller = dofile("scripts/mods/minimap/proc_mesh_controller")
@@ -179,6 +179,10 @@ mod.remove_point = function()
 	end
 end
 -- debug methods (mainly for showing positions, camera settings and all location features (polygons and such))
+mod._show_text = function(self, text, pos)
+	Gui.text(mod.gui, text, "materials/fonts/gw_head_32", 20, "gw_head_20", pos, Color(200, 200, 200))
+	return Vector3(pos[1], pos[2] - 30, pos[3])
+end
 mod.print_live = function()
 	local d = mod:get("debug_mode")
 
@@ -780,16 +784,38 @@ end
 -- base methods are taken somehow from LockedAndLoaded - tyvm
 mod.create_gui = function()
 	local top_world = Managers.world:world("top_ingame_view")
+	-- local status, top_world = pcall(mod.get_minimap_world)
+	-- if not status then
+	-- 	top_world =
+	-- 		Managers.world:create_world(
+	-- 		self._world_name,
+	-- 		GameSettingsDevelopment.default_environment,
+	-- 		nil,
+	-- 		980,
+	-- 		Application.DISABLE_PHYSICS,
+	-- 		Application.DISABLE_APEX_CLOTH
+	-- 	)
+	-- end
 	if top_world then
+		-- local top_world_layer = top_world.layer
+		-- mod:dump(top_world, "top", 2)
+		-- mod:echo("top_world_layer")
 		--proc_mesh_controller:start()
 		--local sphere_points = proc_mesh_controller.make_sphere_points(300)
 
-		-- Create a screen overla
+		-- Create a screen overlay
 		mod.minimap_gui = World.create_screen_gui(top_world, "immediate")
 	end
 	Window.set_show_cursor(true)
 end
+
+mod.get_minimap_world = function()
+	return Managers.world:world("minimap_world")
+end
+
 mod.destroy_gui = function()
+	-- local status, top_world = pcall(mod.get_minimap_world)
+	-- if status and mod.minimap_gui then
 	local top_world = Managers.world:world("top_ingame_view")
 	if top_world and mod.minimap_gui then
 		--proc_mesh_controller:shutdown()
@@ -819,6 +845,21 @@ mod:hook(
 	IngameUI,
 	"post_update",
 	function(func, self, dt, t)
+		--		self:_post_handle_transition()
+
+		local current_view = self.current_view
+
+		if current_view then
+			local views = self.views
+		--mod:dump(views, "views", 1)
+		-- if views[current_view].post_update then
+		-- 	views[current_view]:post_update(dt, t)
+		-- end
+		end
+
+		-- self.ingame_hud:post_update(dt, t)
+		-- self.motd_ui:post_update(dt)
+
 		if mod.minimap_gui and mod.active and mod.camera then
 			if mod.player_input then
 				local s = Vector3.y(Mouse.axis(Mouse.axis_index("wheel")))
@@ -911,9 +952,11 @@ mod.render_minimap_mask = function()
 						size = 40
 					end
 					size = size / mod._scroll_factor
-					if mod.ingame_ui.ui_renderer.gui then
+					--if mod.minimap_gui then
+					if mod.ingame_ui.gui then
 						Gui.text(
-							mod.ingame_ui.ui_renderer.gui,
+							--mod.minimap_gui,
+							mod.ingame_ui.gui,
 							text,
 							"materials/fonts/gw_head_32",
 							size,
@@ -921,7 +964,8 @@ mod.render_minimap_mask = function()
 							Vector2(screen_pos.x + 2, screen_pos.y - 2),
 							Color(0, 0, 0)
 						)
-						Gui.text(mod.ingame_ui.ui_renderer.gui, text, "materials/fonts/gw_head_32", size, "gw_head_20", screen_pos, color)
+						--Gui.text(mod.minimap_gui, text, "materials/fonts/gw_head_32", size, "gw_head_20", screen_pos, color)
+						Gui.text(mod.ingame_ui.gui, text, "materials/fonts/gw_head_32", size, "gw_head_20", screen_pos, color)
 					end
 				end
 			end
@@ -980,18 +1024,10 @@ mod._render_mask_triangle = function(triangle, color, label)
 		local mask_p3 = mod._world_to_map(p3)
 
 		-- optional label at centroid of triangle
-		Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 3999, color)
+		Gui.triangle(mod.minimap_gui, mask_p1, mask_p2, mask_p3, 0, color)
 		if label then
 			local centroid = Vector2((p1.x + p2.x + p3.x) / 3, (p1.y + p2.y + p3.y) / 3)
-			Gui.text(
-				mod.ingame_ui.ui_renderer.gui,
-				label,
-				"materials/fonts/gw_head_32",
-				14,
-				"gw_head_20",
-				mask_p3,
-				Color(255, 255, 255)
-			)
+		--Gui.text(mod.minimap_gui, label, "materials/fonts/gw_head_32", 14, "gw_head_20", mask_p3, Color(255, 255, 255))
 		end
 	end
 end
@@ -1100,6 +1136,51 @@ mod:hook_safe(
 		mod.ingame_ui = self
 	end
 )
+
+mod:hook_origin(
+	IngameHud,
+	"_update_component_visibility",
+	function(self)
+		self._definitions = definitions
+		local visibility_groups = definitions.visibility_groups
+		local num_visibility_groups = #visibility_groups
+
+		for i = 1, num_visibility_groups, 1 do
+			local visibility_group = visibility_groups[i]
+			local group_name = visibility_group.name
+			local validation_function = visibility_group.validation_function
+
+			if validation_function(self) then
+				if group_name ~= self._current_group_name then
+					local components_array = self._components_array
+					local currently_visible_components = self._currently_visible_components
+					local visible_components = visibility_group.visible_components
+
+					for j = 1, #components_array, 1 do
+						local component = components_array[j]
+						local component_name = component.name
+						local status = (visible_components and visible_components[component_name]) or false
+
+						-- maps will set all components status to false
+						if mod.camera then
+							status = false
+						end
+
+						if component.set_visible then
+							component:set_visible(status)
+						end
+
+						currently_visible_components[component_name] = status
+					end
+
+					self._current_group_name = group_name
+				end
+
+				break
+			end
+		end
+	end
+)
 mod:hook_safe(
 	IngameUI,
 	"init",
@@ -1128,6 +1209,9 @@ mod:hook(
 		-- every time a level world is created we want to reload level settings
 		if mod.is_active and name == "level_world" then
 			mod._level_settings = mod:_get_level_settings()
+		end
+		if layer then
+			mod:echo(name .. layer)
 		end
 		return func(self, name, shading_environment, shading_callback, layer, ...)
 	end
@@ -1172,44 +1256,44 @@ mod:hook(
 	end
 )
 
-mod:hook(
-	IngameUI,
-	"_update_hud_visibility",
-	function(func, self, disable_ingame_ui, in_score_screen)
-		local current_view = self.current_view
-		local cutscene_system = self.cutscene_system
-		local mission_vote_in_progress = self.mission_voting_ui:is_active()
-		local is_enter_game = self.countdown_ui:is_enter_game()
-		local end_screen_active = self:end_screen_active()
-		local menu_active = self.menu_active
-		local draw_hud = nil
+-- mod:hook(
+-- 	IngameUI,
+-- 	"_update_hud_visibility",
+-- 	function(func, self, disable_ingame_ui, in_score_screen)
+-- 		local current_view = self.current_view
+-- 		local cutscene_system = self.cutscene_system
+-- 		local mission_vote_in_progress = self.mission_voting_ui:is_active()
+-- 		local is_enter_game = self.countdown_ui:is_enter_game()
+-- 		local end_screen_active = self:end_screen_active()
+-- 		local menu_active = self.menu_active
+-- 		local draw_hud = nil
 
-		if
-			not disable_ingame_ui and not menu_active and not current_view and not is_enter_game and not mission_vote_in_progress and
-				not in_score_screen and
-				not end_screen_active and
-				not self:unavailable_hero_popup_active()
-		 then
-			draw_hud = true
-		else
-			draw_hud = false
-		end
+-- 		if
+-- 			not disable_ingame_ui and not menu_active and not current_view and not is_enter_game and not mission_vote_in_progress and
+-- 				not in_score_screen and
+-- 				not end_screen_active and
+-- 				not self:unavailable_hero_popup_active()
+-- 		 then
+-- 			draw_hud = true
+-- 		else
+-- 			draw_hud = false
+-- 		end
 
-		-- additional condition for map
-		if mod.camera then
-			draw_hud = false
-		end
-		-- end of additional condition
+-- 		-- additional condition for map
+-- 		if mod.camera then
+-- 			draw_hud = false
+-- 		end
+-- 		-- end of additional condition
 
-		local hud_visible = self.hud_visible
+-- 		local hud_visible = self.hud_visible
 
-		if draw_hud ~= hud_visible then
-			self.hud_visible = draw_hud
+-- 		if draw_hud ~= hud_visible then
+-- 			self.hud_visible = draw_hud
 
-			self.ingame_hud:set_visible(draw_hud)
-		end
-	end
-)
+-- 			self.ingame_hud:set_visible(draw_hud)
+-- 		end
+-- 	end
+-- )
 local ItemOverlay = get_mod("item_overlay")
 if ItemOverlay then
 	mod:hook(
