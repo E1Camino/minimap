@@ -15,11 +15,11 @@ return {
 				type = "keybind",
 				keybind_trigger = "pressed", -- "held" when ready
 				keybind_type = "view_toggle",
-				function_name = "map_view",
-				default_value = {"G"},
+				view_name = "minimap_view",
+				default_value = {},
 				transition_data = {
-					open_view_transition_name = "map_view_open",
-					close_view_transition_name = "map_view_close"
+					open_view_transition_name = "minimap_view_open",
+					close_view_transition_name = "minimap_view_close"
 				}
 			},
 			{

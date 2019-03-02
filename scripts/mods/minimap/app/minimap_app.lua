@@ -1,7 +1,6 @@
 local mod = get_mod("minimap")
 
 local text_definitions = local_require("scripts/ui/views/area_indicator_ui_definitions")
-local definitions = local_require("scripts/ui/views/ingame_hud_definitions")
 -- will not use procedural meshes or meshes at all until proper fatshark tools arrive
 -- https://help.autodesk.com/view/Stingray/ENU/?guid=__lua_ref_exa_ex__snippets_proc__meshes_html
 -- local proc_mesh_controller = dofile("scripts/mods/minimap/proc_mesh_controller")
