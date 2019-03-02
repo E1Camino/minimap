@@ -14,9 +14,13 @@ return {
 				setting_id = "open_minimap_view",
 				type = "keybind",
 				keybind_trigger = "pressed", -- "held" when ready
-				keybind_type = "function_call",
-				function_name = "toggleMap",
-				default_value = {}
+				keybind_type = "view_toggle",
+				function_name = "map_view",
+				default_value = {"G"},
+				transition_data = {
+					open_view_transition_name = "map_view_open",
+					close_view_transition_name = "map_view_close"
+				}
 			},
 			{
 				setting_id = "teleport_to_mouse",
