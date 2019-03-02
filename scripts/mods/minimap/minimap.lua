@@ -49,6 +49,7 @@ mod._area_to = nil
 mod._area_t = nil
 mod._progressed_time = 0
 mod._duration = 0.4
+mod._cursor = false
 
 -- manipulating camera props/settings via chat command or some keybindings (a bit like the photopmod but less ambitious :P)
 mod.increaseProp = function()
@@ -186,6 +187,10 @@ end
 mod.print_live = function()
 	local d = mod:get("debug_mode")
 
+	if not mod._cursor == d then
+		mod._cursor = d
+		Window.set_show_cursor(d)
+	end
 	if d then
 		-- show location polygons
 		local same_location = mod._current_location_inside == mod._highlighted_location_inside
@@ -488,6 +493,7 @@ end
 -- location checks (so we can apply camera settings based on the position of the player)
 mod.check_locations = function(dt)
 	if not mod._level_settings then
+		mod._current_settings.near = mod:get_hitpos_above_player()
 		return
 	end
 
@@ -498,12 +504,17 @@ mod.check_locations = function(dt)
 	local local_player_unit = Managers.player:local_player().player_unit
 	local position = Unit.local_position(local_player_unit, 0)
 
+	local znear = false
+
 	-- local overwrite function
 	local overwrite = function(location)
 		if not location.settings then
 			return
 		end
 		for setting_key, setting in pairs(location.settings) do
+			if setting_key == "near" then
+				znear = true
+			end
 			local set_prop = mod._set_props[setting_key]
 			if set_prop then
 				new_settings[setting_key] = set_prop
@@ -511,6 +522,9 @@ mod.check_locations = function(dt)
 				new_settings[setting_key] = setting
 			end
 		end
+	end
+	if mod._set_props.near then
+		znear = true
 	end
 
 	overwrite(mod._level_settings)
@@ -537,6 +551,11 @@ mod.check_locations = function(dt)
 				end
 			end
 		end
+	end
+
+	if not znear then
+		mod:echo("no near")
+		new_settings.near = mod:get_hitpos_above_player()
 	end
 
 	if mod._current_settings then
@@ -694,15 +713,13 @@ mod._get_level_settings = function(self)
 	local level_transition_handler = Managers.state.game_mode.level_transition_handler
 	local level_key = level_transition_handler:get_current_level_keys()
 	mod._level_key = level_key
-	mod:echo(level_key)
+	--mod:echo(level_key)
 	return dofile("scripts/mods/minimap/minimap_level_data")[level_key]
 end
 
 mod.create_viewport = function()
-	local world = Managers.world:world("level_world")
-	mod.world = world
-	mod.viewport = mod._create_minimap_viewport(world, "minimap", "default", 2)
-	ScriptWorld.activate_viewport(world, mod.viewport)
+	mod.viewport = mod._create_minimap_viewport(mod.world, "minimap", "default", 2)
+	ScriptWorld.activate_viewport(mod.world, mod.viewport)
 	mod.active = true
 end
 
@@ -806,7 +823,11 @@ mod.create_gui = function()
 		-- Create a screen overlay
 		mod.minimap_gui = World.create_screen_gui(top_world, "immediate")
 	end
-	Window.set_show_cursor(true)
+
+	-- hide all huds
+	if mod:get("debug_mode") then
+		Window.set_show_cursor(true)
+	end
 end
 
 mod.get_minimap_world = function()
@@ -822,6 +843,7 @@ mod.destroy_gui = function()
 		World.destroy_gui(top_world, mod.minimap_gui)
 		mod.minimap_gui = nil
 	end
+
 	Window.set_show_cursor(false)
 end
 mod.print_game_location = function()
@@ -1060,12 +1082,55 @@ mod.teleport = function()
 	-- get the cursor position
 	local cursor = Mouse.axis(Mouse.axis_id("cursor"))
 	-- calculate clicked position in the world
-	local world_pos = Camera.screen_to_world(mod.camera, Vector3(cursor.x, cursor.y, 0), 0.5)
+	local cam = mod.camera
+	local world_pos = Camera.screen_to_world(cam, Vector3(cursor.x, cursor.y, 0), 0.5)
 	-- teleport the player to clicked position with current znear as height (so we drop into the place that is currently visible on the map)
+
+	-- send ray from above to the world
+	local physics_world = World.get_data(mod.world, "physics_world")
+	local hit, hit_position, c, d, actor =
+		PhysicsWorld.immediate_raycast(
+		physics_world,
+		Vector3(world_pos.x, world_pos.y, mod._current_settings.near),
+		Quaternion.forward(Camera.local_rotation(cam)),
+		999,
+		"closest"
+	)
+
+	local height = mod._current_settings.near
+
+	if hit_position then
+		height = hit_position.z
+	end
+
 	locomotion_extension:teleport_to(
-		Vector3(world_pos.x, world_pos.y, mod._current_settings.near - 1), -- fixed offset of 1 so very narrow passages work a bit better
+		Vector3(world_pos.x, world_pos.y, math.min(200, height + 1)), -- fixed offset of 1 so very narrow passages work a bit better
 		Unit.world_rotation(player_unit, 0)
 	)
+end
+
+mod.get_hitpos_above_player = function()
+	-- get the player
+	local player_unit = Managers.player:local_player().player_unit
+	local player_position = Unit.local_position(player_unit, 0)
+
+	local hitpos_above_player = player_position.z + 6
+
+	-- get the cursor position
+	local cursor = Mouse.axis(Mouse.axis_id("cursor"))
+	-- calculate clicked position in the world
+	local cam = mod.camera
+	local world_pos = Camera.screen_to_world(cam, Vector3(cursor.x, cursor.y, 0), 0.5)
+	-- teleport the player to clicked position with current znear as height (so we drop into the place that is currently visible on the map)
+
+	-- send ray from above to the world
+	local physics_world = World.get_data(mod.world, "physics_world")
+	local hit, hit_position, c, d, actor =
+		PhysicsWorld.immediate_raycast(physics_world, player_position, Vector3(0, 0, 1), 100, "closest")
+	if hit then
+	--hitpos_above_player = math.min(hitpos_above_player, hit_position.z)
+	end
+	return hitpos_above_player
 end
 
 mod.unregister_input = function()
@@ -1077,9 +1142,15 @@ mod.unregister_input = function()
 end
 
 mod.create_minimap = function()
-	mod:create_viewport()
-	mod:create_gui()
-	mod:register_input()
+	local status, result = pcall(Managers.world:world("level_world"))
+
+	if not status then
+		local world = Managers.world:world("level_world")
+		mod.world = world
+		mod:create_viewport()
+		mod:create_gui()
+		mod:register_input()
+	end
 end
 mod.destroy_minimap = function()
 	mod:destroy_viewport()
@@ -1181,11 +1252,12 @@ mod:hook_origin(
 		end
 	end
 )
-mod:hook_safe(
+mod:hook(
 	IngameUI,
 	"init",
-	function(...) -- luacheck: no unused
+	function(func, ...) -- luacheck: no unused
 		mod:echo("init ingame ui")
+		return func(...)
 	end
 )
 mod:hook_safe(
@@ -1251,7 +1323,7 @@ mod:hook(
 	PlayerHud,
 	"set_current_location",
 	function(func, self, location)
-		mod:echo(location)
+		--mod:echo(location)
 		return func(self, location)
 	end
 )
@@ -1330,16 +1402,6 @@ mod.on_unload = function(exit_game)
 end
 
 mod.on_game_state_changed = function(status, state)
-	return
-end
-
-mod.on_setting_changed = function(setting_name)
-	if setting_name == "debug_mode" then
-		if not mod:get("debug_mode") then
-			mod:echo("destroy")
-			mod.destroy_debug_lines()
-		end
-	end
 	return
 end
 
