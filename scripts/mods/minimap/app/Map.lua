@@ -14,18 +14,18 @@ local scenegraph_definition = {
             SIZE_Y
         }
     },
-    minimap_life_view = {
-        scale = "fit",
-        size = {
-            1920,
-            1080
-        },
-        position = {
-            0,
-            0,
-            0
-        }
-    },
+    -- minimap_life_view = {
+    --     scale = "fit",
+    --     size = {
+    --         1920,
+    --         1080
+    --     },
+    --     position = {
+    --         0,
+    --         0,
+    --         0
+    --     }
+    -- },
     title_text = {
         vertical_alignment = "center",
         parent = "screen",
@@ -75,19 +75,19 @@ local title_text_style = {
     }
 }
 local widgets_definitions = {
-    viewport = {
+    minimap_life_view = {
         scenegraph_id = "minimap_life_view",
         element = {
             passes = {
                 {
-                    style_id = "viewport",
-                    pass_type = "viewport",
-                    content_id = "viewport"
+                    style_id = "map_viewport",
+                    pass_type = "map_viewport",
+                    content_id = "map_viewport"
                 }
             }
         },
         style = {
-            viewport = {
+            map_viewport = {
                 scenegraph_id = "minimap_life_view",
                 viewport_name = "minimap_viewport",
                 level_name = "levels/ui_character_selection/world",

@@ -92,7 +92,7 @@ Minimap.setIngameUI = function(self, ingame_ui_context)
     local world = ingame_ui_context.world_manager:world("level_world")
     self.wwise_world = Managers.world:wwise_world(world)
 
-    self:create_ui_elements()
+    --self:create_ui_elements()
 end
 
 Minimap.updateScreneGraph = function(self, name)
