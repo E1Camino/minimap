@@ -5,6 +5,7 @@ mod.update = function(dt)
 end
 
 mod.on_unload = function(exit_game)
+    mod.app.destroy()
 end
 
 mod.on_game_state_changed = function(status, state)
@@ -14,6 +15,7 @@ mod.on_setting_changed = function(setting_name)
 end
 
 mod.on_disabled = function(is_first_call)
+    mod.app.destroy()
 end
 
 mod.on_enabled = function(is_first_call)
@@ -37,20 +39,32 @@ UIPasses.map_viewport = {
             }
         else
         end
+        --        local world = Managers.world:world(style.world_name)
+        local status, world = pcall(Managers.world:world("level_world"))
 
-        local shading_environment = style.shading_environment
-        local world =
-            Managers.world:create_world(style.world_name, shading_environment, nil, style.layer, unpack(world_flags))
+        if not status then
+            world = Managers.world:world("level_world")
+        else
+            local shading_environment = style.shading_environment
+            world =
+                Managers.world:create_world(
+                style.world_name,
+                shading_environment,
+                nil,
+                style.layer,
+                unpack(world_flags)
+            )
+        end
         local viewport_type = style.viewport_type or "default"
         local viewport = ScriptWorld.create_viewport(world, style.viewport_name, viewport_type, style.layer)
         local level_name = style.level_name
         local object_sets = style.object_sets
         local level = nil
 
-        if level_name then
-            level = ScriptWorld.load_level(world, level_name, object_sets, nil, nil, nil)
+        if level_name and not has_level then
+        -- level = ScriptWorld.load_level(world, level_name, object_sets, nil, nil, nil)
 
-            Level.spawn_background(level)
+        --Level.spawn_background(level)
         end
 
         if style.clear_screen_on_create then
@@ -225,6 +239,7 @@ mod:register_view(
         view_name = "minimap_view",
         view_settings = {
             init_view_function = function(ingame_ui_context)
+                mod:echo("init UI")
                 mod.app:setIngameUI(ingame_ui_context)
                 return mod.app
             end,

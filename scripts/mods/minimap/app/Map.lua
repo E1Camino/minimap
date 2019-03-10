@@ -12,20 +12,21 @@ local scenegraph_definition = {
         size = {
             SIZE_X,
             SIZE_Y
+        },
+        is_root = true
+    },
+    viewport = {
+        scale = "fit",
+        size = {
+            500,
+            500
+        },
+        position = {
+            20,
+            20,
+            20
         }
     },
-    -- minimap_life_view = {
-    --     scale = "fit",
-    --     size = {
-    --         1920,
-    --         1080
-    --     },
-    --     position = {
-    --         0,
-    --         0,
-    --         0
-    --     }
-    -- },
     title_text = {
         vertical_alignment = "center",
         parent = "screen",
@@ -57,9 +58,7 @@ local text_style = {
         1
     }
 }
--- local widget_definitions = {
---     area_text_box = UIWidgets.create_simple_text("placeholder_area_text", "area_text_box", nil, nil, text_style)
--- }
+
 local title_text_style = {
     vertical_alignment = "center",
     font_size = 36,
@@ -75,8 +74,8 @@ local title_text_style = {
     }
 }
 local widgets_definitions = {
-    minimap_life_view = {
-        scenegraph_id = "minimap_life_view",
+    viewport = {
+        scenegraph_id = "viewport",
         element = {
             passes = {
                 {
@@ -88,10 +87,10 @@ local widgets_definitions = {
         },
         style = {
             map_viewport = {
-                scenegraph_id = "minimap_life_view",
+                scenegraph_id = "viewport",
                 viewport_name = "minimap_viewport",
                 level_name = "levels/ui_character_selection/world",
-                enable_sub_gui = false,
+                enable_sub_gui = true,
                 fov = 50,
                 world_name = "minimap_world",
                 world_flags = {
@@ -99,7 +98,7 @@ local widgets_definitions = {
                     Application.DISABLE_ESRAM,
                     Application.ENABLE_VOLUMETRICS
                 },
-                layer = UILayer.default - 10,
+                layer = UILayer.default + 10,
                 camera_position = {
                     0,
                     0,
@@ -119,6 +118,7 @@ local widgets_definitions = {
 
 Map = class(Map)
 Map.init = function(self, app)
+    mod:echo("init map view")
     self.app = app
 
     self.definitions = {}
