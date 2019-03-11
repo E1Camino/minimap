@@ -218,9 +218,9 @@ Minimap.suspend = function(self)
 end
 
 Minimap.unsuspend = function(self)
-    --self.input_manager:block_device_except_service("character_selection_view", "keyboard", 1)
-    --self.input_manager:block_device_except_service("character_selection_view", "mouse", 1)
-    --self.input_manager:block_device_except_service("character_selection_view", "gamepad", 1)
+    self.input_manager:block_device_except_service("mod_minimap", "keyboard", 1)
+    self.input_manager:block_device_except_service("mod_minimap", "mouse", 1)
+    self.input_manager:block_device_except_service("mod_minimap", "gamepad", 1)
 
     self.suspended = nil
 
@@ -241,7 +241,9 @@ Minimap.unsuspend = function(self)
 end
 
 Minimap.input_service = function(self)
-    return self.input_manager:get_service("mod_minimap")
+    local service = self.input_manager:get_service("mod_minimap")
+    self.map.input_service = service
+    return service
 end
 
 Minimap.destroy = function(self)
@@ -253,6 +255,7 @@ Minimap.destroy = function(self)
 
     self.ingame_ui_context = nil
     self.ui_animator = nil
+    self.map.input_service = nil
 
     -- local status, world = pcall(Managers.world:world("level_world"))
     -- if not status then

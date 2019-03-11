@@ -29,12 +29,12 @@ local scenegraph_definition = {
     },
     title_text = {
         vertical_alignment = "center",
-        parent = "screen",
+        parent = "viewport",
         horizontal_alignment = "center",
         position = {
             0,
             200,
-            100
+            UILayer.hud + 1
         },
         size = {
             SIZE_X,
@@ -153,13 +153,6 @@ end
 
 Map.update = function(self, dt)
     self:update_keybindings(dt)
-    self:_update_resize(dt)
-    self._current_settings = {
-        height = mod:get("height"),
-        near = mod:get("near"),
-        far = mod:get("far"),
-        area = mod:get("area")
-    }
     if self.camera then
         self:syncCam()
     end
@@ -271,16 +264,21 @@ Map._update_resize = function(self, dt)
 end
 
 Map.update_keybindings = function(self, dt)
-    local ctrl_id = Keyboard.button_id("left ctrl")
-    if Keyboard.released(ctrl_id) then
-        self.ctrl_pressed = false
-    end
-    if Keyboard.pressed(ctrl_id) then
-        self.ctrl_pressed = true
-    end
+    local input_service = self.input_service
+    if input_service then
+        local left_mouse_hold = input_service:get("left_hold")
+        local scroll_wheel = input_service:get("scroll_axis")
+        local shift_hold = input_service:get("shift_hold")
+        local s = Vector3.y(scroll_wheel)
+        local mouse_wheel = tonumber(s)
 
-    if self.ctrl_pressed and Keyboard.pressed(Keyboard.button_id("a")) then
-        self:setAlign()
+        if shift_hold then
+            local n = self._current_settings.near + mouse_wheel / 10 * -1
+            self._current_settings.near = n
+        else
+            local n = self._scroll_factor + mouse_wheel / 100 * -1
+            self._scroll_factor = math.min(math.max(0.2, n), 10.0) -- at least 1/5 of setting and max 10x setting
+        end
     end
 end
 
