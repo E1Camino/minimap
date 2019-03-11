@@ -98,6 +98,8 @@ local widgets_definitions = {
                     Application.DISABLE_ESRAM,
                     Application.ENABLE_VOLUMETRICS
                 },
+                no_scaling = "true",
+                avoid_shading_callback = "true",
                 layer = UILayer.default + 10,
                 camera_position = {
                     0,
@@ -109,6 +111,14 @@ local widgets_definitions = {
                     0,
                     -1
                 }
+            },
+            shading_environment = {
+                fog_enabled = 0,
+                dof_enabled = 0,
+                motion_blur_enabled = 0,
+                outline_enabled = 0,
+                ssm_enabled = 1,
+                ssm_constant_update_enabled = 1
             }
         },
         content = {}
@@ -118,7 +128,6 @@ local widgets_definitions = {
 
 Map = class(Map)
 Map.init = function(self, app)
-    mod:echo("init map view")
     self.app = app
 
     self.definitions = {}
@@ -131,15 +140,106 @@ Map.init = function(self, app)
     self.min_height = 500
     self.border = 12
     self.align = "right"
+
+    self._current_settings = {
+        height = mod:get("height"),
+        near = mod:get("near"),
+        far = mod:get("far"),
+        area = mod:get("area")
+    }
+
+    self._scroll_factor = 1
 end
 
 Map.update = function(self, dt)
     self:update_keybindings(dt)
     self:_update_resize(dt)
+    self._current_settings = {
+        height = mod:get("height"),
+        near = mod:get("near"),
+        far = mod:get("far"),
+        area = mod:get("area")
+    }
+    if self.camera then
+        self:syncCam()
+    end
 end
 
-Map._get_viewport_cam = function(viewport_name)
-    local world = mod.world
+Map.syncCam = function(self, dt)
+    local local_player_unit = Managers.player:local_player().player_unit
+    if not local_player_unit then
+        return
+    end
+    local player_position = Unit.local_position(local_player_unit, 0)
+
+    local camera_position_new = Vector3.zero()
+    camera_position_new.x = player_position.x
+    camera_position_new.y = player_position.y -- sync position with player character
+
+    local viewport_name = "player_1"
+    local original_camera = self:_get_viewport_cam(viewport_name)
+    if not original_camera then
+        return
+    end
+    local original_camera_position = ScriptCamera.position(original_camera)
+    ScriptCamera.set_local_position(self.camera, original_camera_position)
+
+    local cameraHeight = self._current_settings.height
+    local far = self._current_settings.far
+    local near = self._current_settings.near
+
+    camera_position_new.z = cameraHeight
+    local direction = Vector3.normalize(Vector3(0, 0, -1))
+    local rotation = Quaternion.look(direction)
+
+    ScriptCamera.set_local_position(self.camera, camera_position_new)
+    ScriptCamera.set_local_rotation(self.camera, rotation)
+    -- ScriptCamera.set_local_position(self.shadow_cull_camera, camera_position_new)
+    -- ScriptCamera.set_local_rotation(self.shadow_cull_camera, rotation)
+
+    Camera.set_projection_type(self.camera, Camera.ORTHOGRAPHIC)
+    --    Camera.set_projection_type(self.shadow_cull_camera, Camera.ORTHOGRAPHIC)
+
+    local cfar = cameraHeight + far
+    local cnear = cameraHeight - near
+    Camera.set_far_range(self.camera, cfar)
+    Camera.set_near_range(self.camera, cnear)
+    -- Camera.set_far_range(self.shadow_cull_camera, cfar)
+    -- Camera.set_near_range(self.shadow_cull_camera, cnear)
+
+    local scroll = math.min(math.max(0.2, self._scroll_factor), 10.0) -- at least 1/5 of setting and max 10x setting
+    local min = self._current_settings.area * -1 * scroll
+    local max = self._current_settings.area * scroll
+    Camera.set_orthographic_view(self.camera, min, max, min, max)
+    -- Camera.set_orthographic_view(self.shadow_cull_camera, min, max, min, max)
+
+    local s = mod:get("size") / 100
+    local xmin = 1 - s
+    Viewport.set_data(
+        self.viewport,
+        "rect",
+        {
+            xmin,
+            0,
+            s,
+            s
+        }
+    )
+    Viewport.set_rect(self.viewport, unpack(Viewport.get_data(self.viewport, "rect")))
+
+    local shading_env = World.get_data(self.world, "shading_environment")
+    ShadingEnvironment.set_scalar(shading_env, "fog_enabled", 0)
+    ShadingEnvironment.set_scalar(shading_env, "dof_enabled", 0)
+    ShadingEnvironment.set_scalar(shading_env, "motion_bur_enabled", 0)
+    ShadingEnvironment.set_scalar(shading_env, "outline_enabled", 0)
+    --		ShadingEnvironment.set_scalar(shading_env, "sun_shadows_enabled", 0)
+    ShadingEnvironment.set_scalar(shading_env, "ssm_enabled", 1)
+    ShadingEnvironment.set_scalar(shading_env, "ssm_constant_update_enabled", 1)
+    ShadingEnvironment.apply(shading_env)
+end
+
+Map._get_viewport_cam = function(self, viewport_name)
+    local world = self.world
     local o_viewport = ScriptWorld.viewport(world, viewport_name)
 
     return ScriptViewport.camera(o_viewport)
@@ -255,7 +355,7 @@ Map.cb_local_offset = function(self, name, ui_scenegraph, style, content, ui_ren
     -- Debug
     --[[
 	for key, value in pairs(content.top_hotspot) do
-		mod:echo(tostring(key) .. " = " .. tostring(value))
+		self:echo(tostring(key) .. " = " .. tostring(value))
 	end
     ]]
     if content.top_hotspot.cursor_hover then

@@ -25,7 +25,6 @@ Minimap._get_default_settings = function(self)
 end
 
 Minimap.init = function(self, ingame_ui_context)
-    mod:echo("init minimap app")
     self.map = Map:new(self)
     self.suspended = true
 
@@ -69,7 +68,6 @@ Minimap.init = function(self, ingame_ui_context)
 end
 
 Minimap.setIngameUI = function(self, ingame_ui_context)
-    mod:echo("set ingame ui")
     self.definitions = {}
     self.definitions.scenegraph = self.map.definitions.scenegraph
     self.definitions.widgets = self.map.definitions.widgets
@@ -120,14 +118,12 @@ Minimap.create_ui_elements = function(self)
     self.definitions.widgets = {}
 
     self.map:patch()
-    mod:echo("patch")
     -- Create screnegraph
     self.ui_scenegraph = UISceneGraph.init_scenegraph(self.definitions.scenegraph)
 
     -- Create widgets
     self.widgets = {}
     for name, definition in pairs(self.definitions.widgets) do
-        mod:echo(name)
         self.widgets[name] = UIWidget.init(definition)
     end
     self.widgets.title_text.content.text = "jo"
@@ -157,7 +153,6 @@ Minimap.draw_widgets = function(self, dt)
 end
 
 Minimap.on_enter = function(self)
-    mod:echo("enter")
     ShowCursorStack.push()
     local input_manager = self.input_manager
     input_manager:device_unblock_service("keyboard", 1, "mod_minimap")
@@ -170,7 +165,6 @@ Minimap.on_enter = function(self)
 end
 
 Minimap.on_exit = function(self)
-    mod:echo("exit")
     WwiseWorld.trigger_event(self.wwise_world, "Play_hud_button_close")
 
     if ShowCursorStack.stack_depth > 0 then
@@ -186,18 +180,14 @@ Minimap.on_exit = function(self)
 end
 
 Minimap.post_update_on_enter = function(self)
-    mod:echo("post_update_on_enter")
     if not self.widgets.viewport then
-        mod:echo("create viewport widget")
         self.widgets.viewport = UIWidget.init(self.definitions.widgets.viewport)
     end
     self.waiting_for_post_update_enter = false
 end
 
 Minimap.post_update_on_exit = function(self)
-    mod:echo("post_update_on_exit")
     if not self.widgets.viewport then
-        mod:echo("destroy viewport widget")
         if self.widgets.viewport then
             UIWidget.destroy(self.ui_top_renderer, self.widgets.viewport)
             self.widgets.viewport = nil
@@ -207,7 +197,6 @@ Minimap.post_update_on_exit = function(self)
 end
 
 Minimap.suspend = function(self)
-    mod:echo("suspend")
     self.input_manager:device_unblock_all_services("keyboard", 1)
     self.input_manager:device_unblock_all_services("mouse", 1)
     self.input_manager:device_unblock_all_services("gamepad", 1)
@@ -215,7 +204,6 @@ Minimap.suspend = function(self)
     self.suspended = true
     -- activate default level viewport and deactive our own viewport
     if self.widgets.viewport then
-        mod:echo("deactivate")
         local viewport_name = "player_1"
         local world = Managers.world:world("level_world")
         local viewport = ScriptWorld.viewport(world, viewport_name)
@@ -230,21 +218,19 @@ Minimap.suspend = function(self)
 end
 
 Minimap.unsuspend = function(self)
-    mod:echo("unsuspend")
-    self.input_manager:block_device_except_service("character_selection_view", "keyboard", 1)
-    self.input_manager:block_device_except_service("character_selection_view", "mouse", 1)
-    self.input_manager:block_device_except_service("character_selection_view", "gamepad", 1)
+    --self.input_manager:block_device_except_service("character_selection_view", "keyboard", 1)
+    --self.input_manager:block_device_except_service("character_selection_view", "mouse", 1)
+    --self.input_manager:block_device_except_service("character_selection_view", "gamepad", 1)
 
     self.suspended = nil
 
     -- active our own viewport and deactive default level viewport
     if self.widgets.viewport then
-        mod:echo("activate")
         local viewport_name = "player_1"
         local world = Managers.world:world("level_world")
         local viewport = ScriptWorld.viewport(world, viewport_name)
 
-        ScriptWorld.deactivate_viewport(world, viewport)
+        --ScriptWorld.deactivate_viewport(world, viewport)
 
         local previewer_pass_data = self.widgets.viewport.element.pass_data[1]
         local viewport = previewer_pass_data.viewport
@@ -267,9 +253,11 @@ Minimap.destroy = function(self)
 
     self.ingame_ui_context = nil
     self.ui_animator = nil
-    local viewport_name = "player_1"
-    local world = Managers.world:world("level_world")
-    local viewport = ScriptWorld.viewport(world, viewport_name)
 
-    ScriptWorld.activate_viewport(world, viewport)
+    -- local status, world = pcall(Managers.world:world("level_world"))
+    -- if not status then
+    --     local viewport_name = "player_1"
+    --     local viewport = ScriptWorld.viewport(world, viewport_name)
+    --     ScriptWorld.activate_viewport(world, viewport)
+    -- end
 end

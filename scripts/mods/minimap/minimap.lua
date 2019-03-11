@@ -41,7 +41,6 @@ UIPasses.map_viewport = {
         end
         --        local world = Managers.world:world(style.world_name)
         local status, world = pcall(Managers.world:world("level_world"))
-
         if not status then
             world = Managers.world:world("level_world")
         else
@@ -55,17 +54,12 @@ UIPasses.map_viewport = {
                 unpack(world_flags)
             )
         end
+
         local viewport_type = style.viewport_type or "default"
         local viewport = ScriptWorld.create_viewport(world, style.viewport_name, viewport_type, style.layer)
         local level_name = style.level_name
         local object_sets = style.object_sets
         local level = nil
-
-        if level_name and not has_level then
-        -- level = ScriptWorld.load_level(world, level_name, object_sets, nil, nil, nil)
-
-        --Level.spawn_background(level)
-        end
 
         if style.clear_screen_on_create then
         else
@@ -82,13 +76,13 @@ UIPasses.map_viewport = {
         local camera = ScriptViewport.camera(viewport)
 
         ScriptCamera.set_local_position(camera, camera_pos)
-        ScriptCamera.set_local_rotation(camera, Quaternion.look(camera_direction))
-
-        local fov = style.fov or 65
-
-        Camera.set_vertical_fov(camera, (math.pi * fov) / 180)
+        ScriptCamera.set_local_rotation(camera, Quaternion.look(Vector3(0, 0, -1)))
 
         local ui_renderer = nil
+
+        mod.app.map.world = world
+        mod.app.map.camera = camera
+        mod.app.map.viewport = viewport
 
         if style.enable_sub_gui then
             ui_renderer =
@@ -128,7 +122,11 @@ UIPasses.map_viewport = {
         end
 
         ScriptWorld.destroy_viewport(pass_data.world, pass_data.viewport_name)
-        Managers.world:destroy_world(pass_data.world)
+        mod.app.map.viewport = nil
+
+        --Managers.world:destroy_world(pass_data.world)
+        mod.app.map.world = nil
+        mod.app.map.camera = nil
     end,
     draw = function(
         ui_renderer,
@@ -162,7 +160,7 @@ UIPasses.map_viewport = {
 
         if Viewport.get_data(viewport, "initialize") then
             Viewport.set_data(viewport, "initialize", false)
-            Viewport.set_rect(viewport, 0, 0, 1, 1)
+            Viewport.set_rect(viewport, 0, 0, 0.5, 0.5)
         else
             local splitscreen = false
 
@@ -170,7 +168,8 @@ UIPasses.map_viewport = {
                 splitscreen = Managers.splitscreen:active()
             end
 
-            local multiplier = (splitscreen and 0.5) or 1
+            local size = mod:get("size") / 100
+            local multiplier = 1 - size
 
             Viewport.set_rect(
                 viewport,
@@ -179,7 +178,8 @@ UIPasses.map_viewport = {
                 viewport_size.x * multiplier,
                 viewport_size.y * multiplier
             )
-
+            --Viewport.set_rect(viewport, unpack(Viewport.get_data(viewport, "rect")))
+            Viewport.set_rect(viewport, 0, 0, 0.5, 0.5)
             pass_data.viewport_rect_pos_x = viewport_position.x
             pass_data.viewport_rect_pos_y = viewport_position.y
             pass_data.viewport_rect_size_x = scaled_size.x
@@ -239,7 +239,6 @@ mod:register_view(
         view_name = "minimap_view",
         view_settings = {
             init_view_function = function(ingame_ui_context)
-                mod:echo("init UI")
                 mod.app:setIngameUI(ingame_ui_context)
                 return mod.app
             end,
