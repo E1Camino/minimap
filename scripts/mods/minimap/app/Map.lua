@@ -269,15 +269,24 @@ Map.update_keybindings = function(self, dt)
         local left_mouse_hold = input_service:get("left_hold")
         local scroll_wheel = input_service:get("scroll_axis")
         local shift_hold = input_service:get("shift_hold")
+        local ctrl_hold = input_service:get("ctrl_hold")
         local s = Vector3.y(scroll_wheel)
         local mouse_wheel = tonumber(s)
 
         if shift_hold then
+            mod:dump(input_service:get_active_keymaps(), "keymaps", 2)
             local n = self._current_settings.near + mouse_wheel / 10 * -1
-            self._current_settings.near = n
+            if n < self._current_settings.height then
+                self._current_settings.near = n
+            --mod:echo("near " .. self._current_settings.near)
+            end
+        elseif ctrl_hold then
+            --mod:echo("height " .. self._current_settings.height)
+            local n = self._current_settings.height + mouse_wheel / 10 * -1
+            self._current_settings.height = n
         else
             local n = self._scroll_factor + mouse_wheel / 100 * -1
-            self._scroll_factor = math.min(math.max(0.2, n), 10.0) -- at least 1/5 of setting and max 10x setting
+            self._scroll_factor = math.min(math.max(0.2, n), 3000.0) -- at least 1/5 of setting and max 10x setting
         end
     end
 end
@@ -338,6 +347,65 @@ Map.setAlign = function(self, option)
     end
 
     self.app:create_ui_elements()
+end
+
+Map.get_hitpos_above_player = function()
+    -- get the player
+    local player_unit = Managers.player:local_player().player_unit
+    local player_position = Unit.local_position(player_unit, 0)
+
+    local hitpos_above_player = player_position.z + 6
+
+    -- get the cursor position
+    local cursor = Mouse.axis(Mouse.axis_id("cursor"))
+    -- calculate clicked position in the world
+    local cam = self.camera
+    local world_pos = Camera.screen_to_world(cam, Vector3(cursor.x, cursor.y, 0), 0.5)
+    -- teleport the player to clicked position with current znear as height (so we drop into the place that is currently visible on the map)
+
+    -- send ray from above to the world
+    local physics_world = World.get_data(mod.world, "physics_world")
+    local hit, hit_position, c, d, actor =
+        PhysicsWorld.immediate_raycast(physics_world, player_position, Vector3(0, 0, 1), 100, "closest")
+    if hit then
+    --hitpos_above_player = math.min(hitpos_above_player, hit_position.z)
+    end
+    return hitpos_above_player
+end
+
+Map.teleport = function()
+    -- get the player
+    local player_unit = Managers.player:local_player().player_unit
+    local locomotion_extension = ScriptUnit.extension(player_unit, "locomotion_system")
+
+    -- get the cursor position
+    local cursor = Mouse.axis(Mouse.axis_id("cursor"))
+    -- calculate clicked position in the world
+    local cam = self.camera
+    local world_pos = Camera.screen_to_world(cam, Vector3(cursor.x, cursor.y, 0), 0.5)
+    -- teleport the player to clicked position with current znear as height (so we drop into the place that is currently visible on the map)
+
+    -- send ray from above to the world
+    local physics_world = World.get_data(self.world, "physics_world")
+    local hit, hit_position, c, d, actor =
+        PhysicsWorld.immediate_raycast(
+        physics_world,
+        Vector3(world_pos.x, world_pos.y, self.map._current_settings.near),
+        Quaternion.forward(Camera.local_rotation(cam)),
+        999,
+        "closest"
+    )
+
+    local height = mod._current_settings.near
+
+    if hit_position then
+        height = hit_position.z
+    end
+
+    locomotion_extension:teleport_to(
+        Vector3(world_pos.x, world_pos.y, math.min(200, height + 1)), -- fixed offset of 1 so very narrow passages work a bit better
+        Unit.world_rotation(player_unit, 0)
+    )
 end
 
 Map.patch = function(self)

@@ -171,15 +171,9 @@ UIPasses.map_viewport = {
             local size = mod:get("size") / 100
             local multiplier = 1 - size
 
-            Viewport.set_rect(
-                viewport,
-                viewport_position.x * multiplier,
-                viewport_position.y * multiplier,
-                viewport_size.x * multiplier,
-                viewport_size.y * multiplier
-            )
+            --Viewport.set_rect(viewport, size, size, multiplier, multiplier)
             --Viewport.set_rect(viewport, unpack(Viewport.get_data(viewport, "rect")))
-            Viewport.set_rect(viewport, 0, 0, 0.5, 0.5)
+            Viewport.set_rect(viewport, 0.05, 0.05, 0.9, 0.9)
             pass_data.viewport_rect_pos_x = viewport_position.x
             pass_data.viewport_rect_pos_y = viewport_position.y
             pass_data.viewport_rect_size_x = scaled_size.x
@@ -259,3 +253,23 @@ mod:register_view(
         }
     }
 )
+
+mod.setProps = function(key, value)
+    local map = mod.app.map
+    if not map then
+        return
+    end
+    if value == "" then
+        mod:echo("no value given")
+        return
+    end
+
+    if key == "area" or key == "size" or key == "near" or key == "far" or key == "height" then
+        map._current_settings[key] = value
+        mod:set(key, value)
+    else
+        mod:echo(key .. " is not a supported")
+    end
+end
+
+mod:command("map_set", "Sets specific values for Minimap", mod.setProps)

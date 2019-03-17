@@ -126,7 +126,7 @@ Minimap.create_ui_elements = function(self)
     for name, definition in pairs(self.definitions.widgets) do
         self.widgets[name] = UIWidget.init(definition)
     end
-    self.widgets.title_text.content.text = "jo"
+    self.widgets.title_text.content.text = ""
 end
 
 Minimap.update = function(self, dt)
@@ -218,9 +218,9 @@ Minimap.suspend = function(self)
 end
 
 Minimap.unsuspend = function(self)
-    self.input_manager:block_device_except_service("mod_minimap", "keyboard", 1)
-    self.input_manager:block_device_except_service("mod_minimap", "mouse", 1)
-    self.input_manager:block_device_except_service("mod_minimap", "gamepad", 1)
+    -- self.input_manager:block_device_except_service("mod_minimap", "keyboard", 1)
+    -- self.input_manager:block_device_except_service("mod_minimap", "mouse", 1)
+    -- self.input_manager:block_device_except_service("mod_minimap", "gamepad", 1)
 
     self.suspended = nil
 
